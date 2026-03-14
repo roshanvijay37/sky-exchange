@@ -41,9 +41,10 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
         if (Math.Round(req.Price, 2) != req.Price)
             return BadRequest("Price must have at most 2 decimal places");
 
-        var odd = await db.Odds.Include(o => o.Market).FirstOrDefaultAsync(o => o.Id == req.OddsId);
+        var odd = await db.Odds.Include(o => o.Market).ThenInclude(m => m.Match).FirstOrDefaultAsync(o => o.Id == req.OddsId);
         if (odd is null) return NotFound("Odds not found");
         if (odd.Market.Status != "open") return BadRequest("Market is closed");
+        if (odd.Market.Match.IsLocked) return BadRequest("This match is currently not accepting bets");
 
         for (int attempt = 0; attempt < MaxRetries; attempt++)
         {

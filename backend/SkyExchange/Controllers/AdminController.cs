@@ -157,12 +157,20 @@ public class AdminController(AppDbContext db) : ControllerBase
             .OrderBy(m => m.StartTime)
             .Select(m => new
             {
-                m.Id,
-                Sport = m.SportTitle != "" ? m.SportTitle : m.Sport,
-                m.TeamA, m.TeamB, m.StartTime, m.Status, m.IsVisible
+                m.Id, m.TeamA, m.TeamB, m.StartTime, m.Status, m.IsVisible, m.IsLocked
             })
             .ToListAsync();
         return Ok(matches);
+    }
+
+    [HttpPost("matches/{matchId}/toggle-lock")]
+    public async Task<IActionResult> ToggleLock(int matchId)
+    {
+        var match = await db.Matches.FindAsync(matchId);
+        if (match is null) return NotFound("Match not found");
+        match.IsLocked = !match.IsLocked;
+        await db.SaveChangesAsync();
+        return Ok(new { matchId, match.IsLocked });
     }
 
     [HttpPost("matches/{matchId}/toggle-visibility")]

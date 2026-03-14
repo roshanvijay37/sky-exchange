@@ -69,7 +69,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"dashboard" | "matches" | "users">("dashboard");
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [matches, setMatches] = useState<(Match & { isVisible: boolean })[]>([]);
+  const [matches, setMatches] = useState<(Match & { isVisible: boolean; isLocked: boolean })[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [message, setMessage] = useState("");
@@ -86,7 +86,7 @@ export default function AdminPage() {
 
   const loadAll = () => {
     fetchApi<Dashboard>("/admin/dashboard").then(setDashboard);
-    fetchApi<(Match & { isVisible: boolean })[]>("/admin/matches").then(setMatches);
+    fetchApi<(Match & { isVisible: boolean; isLocked: boolean })[]>("/admin/matches").then(setMatches);
     fetchApi<AdminUser[]>("/admin/users").then(setUsers);
     fetchApi<MatchExposure[]>("/admin/exposure").then(setExposure);
   };
@@ -112,6 +112,13 @@ export default function AdminPage() {
       const data = await fetchApi<Market[]>(`/markets/match/${matchId}`);
       setMarkets(data);
     }
+  };
+
+  const toggleLock = async (matchId: number) => {
+    const m = matches.find(m => m.id === matchId);
+    if (!confirm(`${m?.isLocked ? "Unlock" : "Lock"} "${m?.teamA} vs ${m?.teamB}"? ${m?.isLocked ? "Users can bet again." : "Users will see the match but cannot bet."}`)) return;
+    await fetchApi(`/admin/matches/${matchId}/toggle-lock`, { method: "POST" });
+    loadAll();
   };
 
   const toggleVisibility = async (matchId: number) => {
@@ -350,7 +357,18 @@ export default function AdminPage() {
                       {m.status.toUpperCase()}
                     </span>
                     {!m.isVisible && <span className="text-xs px-2 py-0.5 rounded bg-red-900 text-red-300">HIDDEN</span>}
+                    {m.isLocked && <span className="text-xs px-2 py-0.5 rounded bg-yellow-900 text-yellow-300">LOCKED</span>}
                   </div>
+                </button>
+                <button
+                  onClick={() => toggleLock(m.id)}
+                  className={`text-xs px-3 py-1.5 rounded font-bold ml-2 ${
+                    m.isLocked
+                      ? "bg-green-900 text-green-300 hover:bg-green-800"
+                      : "bg-yellow-900 text-yellow-300 hover:bg-yellow-800"
+                  }`}
+                >
+                  {m.isLocked ? "🔓 Unlock" : "🔒 Lock"}
                 </button>
                 <button
                   onClick={() => toggleVisibility(m.id)}

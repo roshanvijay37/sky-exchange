@@ -19,6 +19,7 @@ CREATE TABLE matches (
     status VARCHAR(20) NOT NULL DEFAULT 'upcoming',  -- upcoming, live, completed
     winning_outcome VARCHAR(100),                      -- set on settlement
     is_visible BOOLEAN NOT NULL DEFAULT true,          -- admin can hide from users
+    is_locked BOOLEAN NOT NULL DEFAULT false,           -- visible but no bets accepted
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

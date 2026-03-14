@@ -5,6 +5,7 @@ export interface Match {
   teamB: string;
   startTime: string;
   status: string;
+  isLocked: boolean;
 }
 
 export interface Odd {

@@ -137,6 +137,8 @@ export default function MatchPage() {
   if (!match) return <p className="text-gray-400">{t("loading")}</p>;
 
   const isSuspended = markets.some(m => m.status === "suspended");
+  const isLocked = match.isLocked;
+  const canBet = !isSuspended && !isLocked;
   const effectivePrice = selectedOdd ? getUserPrice(selectedOdd) : 0;
   const stakeNum = Number(stake) || 0;
   const profit = winAmount(effectivePrice, stakeNum);
@@ -152,6 +154,12 @@ export default function MatchPage() {
           {match.status === "live" ? t("live") : t("upcoming")}
         </span>
       </div>
+
+      {isLocked && (
+        <div className="bg-yellow-900/50 border border-yellow-700 rounded-lg p-3 mb-4 text-center">
+          <p className="text-yellow-300 font-bold text-sm">🔒 {t("matchLocked") || "Not accepting bets right now"}</p>
+        </div>
+      )}
 
       {isSuspended && (
         <div className="bg-red-900/50 border border-red-700 rounded-lg p-3 mb-4 text-center">
@@ -169,9 +177,9 @@ export default function MatchPage() {
               return (
                 <button
                   key={odd.id}
-                  onClick={() => !isSuspended && selectOdd(odd)}
+                  onClick={() => canBet && selectOdd(odd)}
                   className={`rounded-xl p-4 text-center border-2 transition ${
-                    isSuspended ? "border-gray-800 bg-gray-900 opacity-50 cursor-not-allowed" :
+                    isSuspended || isLocked ? "border-gray-800 bg-gray-900 opacity-50 cursor-not-allowed" :
                     selectedOdd?.id === odd.id ? "border-yellow-400 bg-gray-800 scale-[1.02]" : "border-gray-700 bg-gray-900 hover:border-yellow-400/50"
                   }`}
                 >
@@ -186,7 +194,7 @@ export default function MatchPage() {
         </div>
       ))}
 
-      {selectedOdd && !isSuspended && (
+      {selectedOdd && canBet && (
         <div className="max-w-md mx-auto mt-4">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
             <h3 className="font-bold text-lg mb-1">{selectedOdd.outcome}</h3>

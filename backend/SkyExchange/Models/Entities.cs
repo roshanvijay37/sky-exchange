@@ -28,6 +28,7 @@ public class Match
     [Column("status")] public string Status { get; set; } = "upcoming";
     [Column("winning_outcome")] public string? WinningOutcome { get; set; }
     [Column("is_visible")] public bool IsVisible { get; set; } = true;
+    [Column("is_locked")] public bool IsLocked { get; set; }
     [Column("created_at")] public DateTime CreatedAt { get; set; }
     public List<Market> Markets { get; set; } = [];
 }
