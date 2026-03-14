@@ -13,7 +13,7 @@ public class MatchesController(AppDbContext db) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] string? status)
     {
-        var query = db.Matches.AsQueryable();
+        var query = db.Matches.Where(m => m.IsVisible);
         if (!string.IsNullOrEmpty(status))
             query = query.Where(m => m.Status == status);
 
@@ -38,7 +38,7 @@ public class MatchesController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var match = await db.Matches
-            .Where(m => m.Id == id)
+            .Where(m => m.Id == id && m.IsVisible)
             .Select(m => new
             {
                 m.Id,

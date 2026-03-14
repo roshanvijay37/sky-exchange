@@ -118,6 +118,31 @@ public class AdminController(AppDbContext db) : ControllerBase
         return Ok(new { user.Id, user.IsSuspended });
     }
 
+    [HttpGet("matches")]
+    public async Task<IActionResult> GetAllMatches()
+    {
+        var matches = await db.Matches
+            .OrderBy(m => m.StartTime)
+            .Select(m => new
+            {
+                m.Id,
+                Sport = m.SportTitle != "" ? m.SportTitle : m.Sport,
+                m.TeamA, m.TeamB, m.StartTime, m.Status, m.IsVisible
+            })
+            .ToListAsync();
+        return Ok(matches);
+    }
+
+    [HttpPost("matches/{matchId}/toggle-visibility")]
+    public async Task<IActionResult> ToggleVisibility(int matchId)
+    {
+        var match = await db.Matches.FindAsync(matchId);
+        if (match is null) return NotFound("Match not found");
+        match.IsVisible = !match.IsVisible;
+        await db.SaveChangesAsync();
+        return Ok(new { matchId, match.IsVisible });
+    }
+
     [HttpPost("matches/{matchId}/suspend")]
     public async Task<IActionResult> ToggleMarketSuspension(int matchId)
     {

@@ -54,7 +54,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"dashboard" | "matches" | "users">("dashboard");
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<(Match & { isVisible: boolean })[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [message, setMessage] = useState("");
@@ -65,7 +65,7 @@ export default function AdminPage() {
 
   const loadAll = () => {
     fetchApi<Dashboard>("/admin/dashboard").then(setDashboard);
-    fetchApi<Match[]>("/matches").then(setMatches);
+    fetchApi<(Match & { isVisible: boolean })[]>("/admin/matches").then(setMatches);
     fetchApi<AdminUser[]>("/admin/users").then(setUsers);
   };
 
@@ -90,6 +90,13 @@ export default function AdminPage() {
       const data = await fetchApi<Market[]>(`/markets/match/${matchId}`);
       setMarkets(data);
     }
+  };
+
+  const toggleVisibility = async (matchId: number) => {
+    const m = matches.find(m => m.id === matchId);
+    if (!confirm(`${m?.isVisible ? "Hide" : "Show"} "${m?.teamA} vs ${m?.teamB}" from users?`)) return;
+    await fetchApi(`/admin/matches/${matchId}/toggle-visibility`, { method: "POST" });
+    loadAll();
   };
 
   const settle = async (outcome: string) => {
@@ -258,19 +265,33 @@ export default function AdminPage() {
           <h2 className="text-sm text-gray-400 mb-2">Active Matches</h2>
           <div className="grid gap-2 mb-6">
             {activeMatches.map((m) => (
-              <button
+              <div
                 key={m.id}
-                onClick={() => selectMatch(m)}
-                className={`bg-gray-900 border rounded-lg p-3 text-left transition ${
+                className={`bg-gray-900 border rounded-lg p-3 flex justify-between items-center transition ${
                   selectedMatch?.id === m.id ? "border-yellow-400" : "border-gray-800 hover:border-gray-600"
-                }`}
+                } ${!m.isVisible ? "opacity-50" : ""}`}
               >
-                <span className="text-xs text-gray-400">{m.sport}</span>
-                <p className="font-semibold">{m.teamA} vs {m.teamB}</p>
-                <span className={`text-xs px-2 py-0.5 rounded ${m.status === "live" ? "bg-green-600" : "bg-gray-700"}`}>
-                  {m.status.toUpperCase()}
-                </span>
-              </button>
+                <button onClick={() => selectMatch(m)} className="text-left flex-1">
+                  <span className="text-xs text-gray-400">{m.sport}</span>
+                  <p className="font-semibold">{m.teamA} vs {m.teamB}</p>
+                  <div className="flex gap-2 mt-1">
+                    <span className={`text-xs px-2 py-0.5 rounded ${m.status === "live" ? "bg-green-600" : "bg-gray-700"}`}>
+                      {m.status.toUpperCase()}
+                    </span>
+                    {!m.isVisible && <span className="text-xs px-2 py-0.5 rounded bg-red-900 text-red-300">HIDDEN</span>}
+                  </div>
+                </button>
+                <button
+                  onClick={() => toggleVisibility(m.id)}
+                  className={`text-xs px-3 py-1.5 rounded font-bold ml-2 ${
+                    m.isVisible
+                      ? "bg-red-900 text-red-300 hover:bg-red-800"
+                      : "bg-green-900 text-green-300 hover:bg-green-800"
+                  }`}
+                >
+                  {m.isVisible ? "👁 Hide" : "👁 Show"}
+                </button>
+              </div>
             ))}
             {activeMatches.length === 0 && <p className="text-gray-500 text-sm">No active matches</p>}
           </div>
