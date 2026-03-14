@@ -22,7 +22,7 @@ public class MatchesController(AppDbContext db) : ControllerBase
             .Select(m => new
             {
                 m.Id,
-                m.Sport,
+                Sport = m.SportTitle != "" ? m.SportTitle : m.Sport,
                 m.TeamA,
                 m.TeamB,
                 m.StartTime,
@@ -42,7 +42,7 @@ public class MatchesController(AppDbContext db) : ControllerBase
             .Select(m => new
             {
                 m.Id,
-                m.Sport,
+                Sport = m.SportTitle != "" ? m.SportTitle : m.Sport,
                 m.TeamA,
                 m.TeamB,
                 m.StartTime,

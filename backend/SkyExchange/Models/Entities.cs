@@ -19,6 +19,7 @@ public class Match
 {
     [Key, Column("id")] public int Id { get; set; }
     [Column("sport")] public string Sport { get; set; } = "";
+    [Column("sport_title")] public string SportTitle { get; set; } = "";
     [Column("team_a")] public string TeamA { get; set; } = "";
     [Column("team_b")] public string TeamB { get; set; } = "";
     [Column("start_time")] public DateTime StartTime { get; set; }
