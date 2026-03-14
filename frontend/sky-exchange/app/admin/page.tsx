@@ -92,8 +92,6 @@ export default function AdminPage() {
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [digitMsg, setDigitMsg] = useState("");
-  const [contestScoreA, setContestScoreA] = useState("");
-  const [contestScoreB, setContestScoreB] = useState("");
   const [contestMsg, setContestMsg] = useState("");
   const [exposure, setExposure] = useState<MatchExposure[]>([]);
   const [oddsMsg, setOddsMsg] = useState("");
@@ -528,31 +526,12 @@ export default function AdminPage() {
                 {oddsMsg && <p className="text-sm mt-2">{oddsMsg}</p>}
               </div>
 
-              {/* Create Contest */}
+              {/* Score Prediction Contest */}
               <div className="mt-4 border-t border-gray-800 pt-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-400">🏆 Score Prediction Contest</p>
-                  <button
-                    onClick={async () => {
-                      if (!selectedMatch) return;
-                      if (!confirm(`Create a ₹100 entry contest (10 players) for this match?`)) return;
-                      try {
-                        await fetchApi("/admin/contest/create", {
-                          method: "POST",
-                          body: JSON.stringify({ matchId: selectedMatch.id }),
-                        });
-                        setContestMsg("✅ Contest created!");
-                      } catch (e: unknown) {
-                        setContestMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
-                      }
-                    }}
-                    className="bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded"
-                  >+ Create Contest</button>
-                </div>
-                {contestMsg && <p className="text-sm mt-2">{contestMsg}</p>}
+                <p className="text-sm text-gray-400">🏆 Score Prediction Contest (auto-created)</p>
               </div>
 
-              {/* Settle/Cancel Contest */}
+              {/* Contest Settle/Cancel */}
               <ContestAdmin matchId={selectedMatch.id} />
 
               {/* Settle Digits */}

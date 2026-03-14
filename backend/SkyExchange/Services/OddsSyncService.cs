@@ -102,6 +102,17 @@ public class OddsSyncService(IServiceProvider services, IConfiguration config, I
                     }
 
                     logger.LogInformation("Added match: {Home} vs {Away}", evt.HomeTeam, evt.AwayTeam);
+
+                    // Auto-create score prediction contest
+                    db.ScoreContests.Add(new ScoreContest
+                    {
+                        MatchId = match.Id,
+                        EntryFee = 100m,
+                        MaxPlayers = 10,
+                        Status = "open",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    await db.SaveChangesAsync(ct);
                 }
                 else
                 {

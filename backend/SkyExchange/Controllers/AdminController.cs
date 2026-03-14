@@ -83,6 +83,19 @@ public class AdminController(AppDbContext db) : ControllerBase
 
         match.Status = "completed";
         match.WinningOutcome = req.WinningOutcome;
+
+        // Auto-cancel unfilled score contests for this match
+        var openContests = await db.ScoreContests
+            .Where(c => c.MatchId == matchId && c.Status == "open")
+            .Include(c => c.Predictions).ThenInclude(p => p.User)
+            .ToListAsync();
+        foreach (var contest in openContests)
+        {
+            foreach (var p in contest.Predictions)
+                p.User.Balance += contest.EntryFee;
+            contest.Status = "cancelled";
+        }
+
         await db.SaveChangesAsync();
 
         return Ok(new { Message = $"Match settled. Winner: {req.WinningOutcome}. Commission earned: ${totalCommission:F2} ({CommissionRate * 100}%)", Payouts = payouts, TotalCommission = totalCommission });
