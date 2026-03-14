@@ -18,20 +18,37 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
 {
     private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    private const decimal MinStake = 1m;
+    private const decimal MaxStake = 5000m;
+    private const decimal MinPrice = 1.01m;
+    private const decimal MaxPrice = 1000m;
+
     [HttpPost]
     public async Task<IActionResult> PlaceOrder([FromBody] TradeRequest req)
     {
         if (req.Side is not ("back" or "lay"))
             return BadRequest("Side must be 'back' or 'lay'");
+        if (req.Stake < MinStake || req.Stake > MaxStake)
+            return BadRequest($"Stake must be between {MinStake} and {MaxStake}");
+        if (req.Price < MinPrice || req.Price > MaxPrice)
+            return BadRequest($"Price must be between {MinPrice} and {MaxPrice}");
+        if (Math.Round(req.Price, 2) != req.Price)
+            return BadRequest("Price must have at most 2 decimal places");
+
+        var odd = await db.Odds.Include(o => o.Market).FirstOrDefaultAsync(o => o.Id == req.OddsId);
+        if (odd is null) return NotFound("Odds not found");
+        if (odd.Market.Status != "open") return BadRequest("Market is closed");
 
         var user = await db.Users.FindAsync(UserId);
         if (user is null) return NotFound("User not found");
 
         var liability = req.Side == "back" ? req.Stake : req.Stake * (req.Price - 1);
+        if (liability <= 0) return BadRequest("Invalid liability");
         if (user.Balance < liability)
             return BadRequest("Insufficient balance");
 
         user.Balance -= liability;
+        if (user.Balance < 0) return BadRequest("Insufficient balance");
 
         var order = new Order
         {
@@ -98,7 +115,8 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
             .Where(o => o.OddsId == incoming.OddsId
                      && o.Side == oppositeSide
                      && o.Status == "pending"
-                     && o.Id != incoming.Id)
+                     && o.Id != incoming.Id
+                     && o.UserId != incoming.UserId)
             .Where(o => incoming.Side == "back"
                 ? o.Price <= incoming.Price
                 : o.Price >= incoming.Price)

@@ -154,7 +154,10 @@ export default function MatchPage() {
             </div>
             <input
               type="number"
-              placeholder="Stake amount"
+              placeholder="Stake ($1 – $5,000)"
+              min={1}
+              max={5000}
+              step={1}
               value={stake}
               onChange={(e) => setStake(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 mb-3 text-sm"
