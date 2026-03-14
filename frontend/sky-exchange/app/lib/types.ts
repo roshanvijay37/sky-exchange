@@ -37,3 +37,15 @@ export interface Position {
   outcome: string;
   createdAt: string;
 }
+
+export interface TradeHistory {
+  id: number;
+  match: string;
+  outcome: string;
+  side: string;
+  price: number;
+  stake: number;
+  pnl: number;
+  pnlStatus: string;
+  createdAt: string;
+}

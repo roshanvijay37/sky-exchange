@@ -4,17 +4,20 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { Position } from "../lib/types";
+import { Position, TradeHistory } from "../lib/types";
 
 export default function PositionsPage() {
   const { user, refreshBalance } = useAuth();
   const router = useRouter();
+  const [tab, setTab] = useState<"orders" | "trades">("orders");
   const [balance, setBalance] = useState<number | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [trades, setTrades] = useState<TradeHistory[]>([]);
 
   const load = () => {
     fetchApi<{ balance: number }>("/user/me").then((u) => setBalance(u.balance));
     fetchApi<Position[]>("/user/me/positions").then(setPositions);
+    fetchApi<TradeHistory[]>("/user/me/trades").then(setTrades);
   };
 
   useEffect(() => {
@@ -38,68 +41,142 @@ export default function PositionsPage() {
 
   if (!user) return null;
 
+  const totalPnl = trades.filter(t => t.pnlStatus !== "open").reduce((sum, t) => sum + t.pnl, 0);
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">My Positions</h1>
-        {balance !== null && (
-          <span className="bg-gray-900 border border-gray-700 px-4 py-2 rounded text-sm">
-            Balance: <span className="text-yellow-400 font-bold">${balance.toFixed(2)}</span>
-          </span>
-        )}
+        <div className="flex items-center gap-4">
+          {trades.length > 0 && (
+            <span className={`text-sm font-bold ${totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+              P&L: {totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}
+            </span>
+          )}
+          {balance !== null && (
+            <span className="bg-gray-900 border border-gray-700 px-4 py-2 rounded text-sm">
+              Balance: <span className="text-yellow-400 font-bold">${balance.toFixed(2)}</span>
+            </span>
+          )}
+        </div>
       </div>
 
-      {positions.length === 0 ? (
-        <p className="text-gray-500">No trades yet. Go place some orders!</p>
-      ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-gray-400 text-left border-b border-gray-800">
-              <th className="py-2">Outcome</th>
-              <th>Side</th>
-              <th>Price</th>
-              <th>Stake</th>
-              <th>Status</th>
-              <th>Time</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {positions.map((p) => (
-              <tr key={p.id} className="border-b border-gray-800/50">
-                <td className="py-2">{p.outcome}</td>
-                <td>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${p.side === "back" ? "bg-blue-900 text-blue-300" : "bg-pink-900 text-pink-300"}`}>
-                    {p.side.toUpperCase()}
-                  </span>
-                </td>
-                <td>{p.price.toFixed(2)}</td>
-                <td>${p.stake.toFixed(2)}</td>
-                <td>
-                  <span className={`text-xs ${
-                    p.status === "matched" ? "text-green-400"
-                    : p.status === "pending" ? "text-yellow-400"
-                    : p.status === "cancelled" ? "text-red-400"
-                    : "text-gray-400"
-                  }`}>
-                    {p.status}
-                  </span>
-                </td>
-                <td className="text-gray-500">{new Date(p.createdAt).toLocaleTimeString()}</td>
-                <td>
-                  {p.status === "pending" && (
-                    <button
-                      onClick={() => cancelOrder(p.id)}
-                      className="text-xs bg-red-900 text-red-300 px-2 py-1 rounded hover:bg-red-800"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </td>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4">
+        <button
+          onClick={() => setTab("orders")}
+          className={`px-4 py-2 rounded-t text-sm font-bold ${tab === "orders" ? "bg-gray-900 text-white" : "bg-gray-800 text-gray-500"}`}
+        >
+          Open Orders ({positions.filter(p => p.status === "pending").length})
+        </button>
+        <button
+          onClick={() => setTab("trades")}
+          className={`px-4 py-2 rounded-t text-sm font-bold ${tab === "trades" ? "bg-gray-900 text-white" : "bg-gray-800 text-gray-500"}`}
+        >
+          Trade History ({trades.length})
+        </button>
+      </div>
+
+      {/* Orders Tab */}
+      {tab === "orders" && (
+        positions.length === 0 ? (
+          <p className="text-gray-500">No orders yet. Go place some trades!</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-gray-400 text-left border-b border-gray-800">
+                <th className="py-2">Outcome</th>
+                <th>Side</th>
+                <th>Price</th>
+                <th>Stake</th>
+                <th>Status</th>
+                <th>Time</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {positions.map((p) => (
+                <tr key={p.id} className="border-b border-gray-800/50">
+                  <td className="py-2">{p.outcome}</td>
+                  <td>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${p.side === "back" ? "bg-blue-900 text-blue-300" : "bg-pink-900 text-pink-300"}`}>
+                      {p.side.toUpperCase()}
+                    </span>
+                  </td>
+                  <td>{p.price.toFixed(2)}</td>
+                  <td>${p.stake.toFixed(2)}</td>
+                  <td>
+                    <span className={`text-xs ${
+                      p.status === "matched" ? "text-green-400"
+                      : p.status === "pending" ? "text-yellow-400"
+                      : p.status === "cancelled" ? "text-red-400"
+                      : "text-gray-400"
+                    }`}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td className="text-gray-500">{new Date(p.createdAt).toLocaleTimeString()}</td>
+                  <td>
+                    {p.status === "pending" && (
+                      <button
+                        onClick={() => cancelOrder(p.id)}
+                        className="text-xs bg-red-900 text-red-300 px-2 py-1 rounded hover:bg-red-800"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      )}
+
+      {/* Trades Tab */}
+      {tab === "trades" && (
+        trades.length === 0 ? (
+          <p className="text-gray-500">No matched trades yet.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-gray-400 text-left border-b border-gray-800">
+                <th className="py-2">Match</th>
+                <th>Outcome</th>
+                <th>Side</th>
+                <th>Price</th>
+                <th>Stake</th>
+                <th>P&L</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trades.map((t) => (
+                <tr key={t.id} className="border-b border-gray-800/50">
+                  <td className="py-2 text-gray-300">{t.match}</td>
+                  <td>{t.outcome}</td>
+                  <td>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${t.side === "back" ? "bg-blue-900 text-blue-300" : "bg-pink-900 text-pink-300"}`}>
+                      {t.side.toUpperCase()}
+                    </span>
+                  </td>
+                  <td>{t.price.toFixed(2)}</td>
+                  <td>${t.stake.toFixed(2)}</td>
+                  <td>
+                    {t.pnlStatus === "open" ? (
+                      <span className="text-xs text-yellow-400">Open</span>
+                    ) : (
+                      <span className={`text-xs font-bold ${t.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {t.pnl >= 0 ? "+" : ""}${t.pnl.toFixed(2)}
+                      </span>
+                    )}
+                  </td>
+                  <td className="text-gray-500">{new Date(t.createdAt).toLocaleTimeString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
       )}
     </div>
   );

@@ -74,6 +74,7 @@ public class AdminController(AppDbContext db) : ControllerBase
         }
 
         match.Status = "completed";
+        match.WinningOutcome = req.WinningOutcome;
         await db.SaveChangesAsync();
 
         return Ok(new { Message = $"Match settled. Winner: {req.WinningOutcome}", Payouts = payouts });

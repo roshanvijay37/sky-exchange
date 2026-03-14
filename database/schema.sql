@@ -16,6 +16,7 @@ CREATE TABLE matches (
     team_b VARCHAR(100) NOT NULL,
     start_time TIMESTAMP NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'upcoming',  -- upcoming, live, completed
+    winning_outcome VARCHAR(100),                      -- set on settlement
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
