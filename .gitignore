@@ -1,0 +1,12 @@
+# Backend
+backend/SkyExchange/bin/
+backend/SkyExchange/obj/
+
+# Frontend
+frontend/sky-exchange/node_modules/
+frontend/sky-exchange/.next/
+
+# IDE
+.vs/
+.vscode/
+*.user
