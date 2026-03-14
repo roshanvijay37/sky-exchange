@@ -9,7 +9,7 @@ import { useI18n } from "../../lib/i18n";
 import { Match, Market, Odd, OrderBookEntry } from "../../lib/types";
 
 const PLATFORM_CUT = 0.2;
-const MARGIN = 0.05;
+const MARGIN = 0.10;
 
 function getUserPrice(odd: Odd) {
   const wBack = odd.backPrice * (1 - MARGIN);
