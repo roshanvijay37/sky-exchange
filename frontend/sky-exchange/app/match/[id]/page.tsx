@@ -8,11 +8,14 @@ import { useAuth } from "../../lib/auth";
 import { Match, Market, Odd, OrderBookEntry } from "../../lib/types";
 
 const PLATFORM_CUT = 0.2; // 20% of spread
+const MARGIN = 0.05; // 5% widen each side
 
 function getUserPrice(odd: Odd) {
-  const spread = odd.layPrice - odd.backPrice;
+  const wBack = odd.backPrice * (1 - MARGIN);
+  const wLay = odd.layPrice * (1 + MARGIN);
+  const spread = wLay - wBack;
   const cut = spread * PLATFORM_CUT;
-  return odd.backPrice + (spread / 2) - cut;
+  return wBack + (spread / 2) - cut;
 }
 
 function winAmount(price: number, stake: number) {
