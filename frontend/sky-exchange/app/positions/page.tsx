@@ -8,10 +8,25 @@ export default function PositionsPage() {
   const [balance, setBalance] = useState<number | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
 
-  useEffect(() => {
+  const load = () => {
     fetchApi<{ balance: number }>("/user/1").then((u) => setBalance(u.balance));
     fetchApi<Position[]>("/user/1/positions").then(setPositions);
-  }, []);
+  };
+
+  useEffect(load, []);
+
+  const cancelOrder = async (orderId: number) => {
+    try {
+      const result = await fetchApi<{ id: number; status: string; balance: number }>(
+        `/trade/${orderId}?userId=1`,
+        { method: "DELETE" }
+      );
+      setBalance(result.balance);
+      load();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Error cancelling order");
+    }
+  };
 
   return (
     <div>
@@ -36,6 +51,7 @@ export default function PositionsPage() {
               <th>Stake</th>
               <th>Status</th>
               <th>Time</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -50,11 +66,26 @@ export default function PositionsPage() {
                 <td>{p.price.toFixed(2)}</td>
                 <td>${p.stake.toFixed(2)}</td>
                 <td>
-                  <span className={`text-xs ${p.status === "matched" ? "text-green-400" : p.status === "pending" ? "text-yellow-400" : "text-gray-400"}`}>
+                  <span className={`text-xs ${
+                    p.status === "matched" ? "text-green-400" 
+                    : p.status === "pending" ? "text-yellow-400" 
+                    : p.status === "cancelled" ? "text-red-400"
+                    : "text-gray-400"
+                  }`}>
                     {p.status}
                   </span>
                 </td>
                 <td className="text-gray-500">{new Date(p.createdAt).toLocaleTimeString()}</td>
+                <td>
+                  {p.status === "pending" && (
+                    <button
+                      onClick={() => cancelOrder(p.id)}
+                      className="text-xs bg-red-900 text-red-300 px-2 py-1 rounded hover:bg-red-800"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

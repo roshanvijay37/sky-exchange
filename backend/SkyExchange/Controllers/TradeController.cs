@@ -50,6 +50,27 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
         return Ok(new { order.Id, order.Status, user.Balance });
     }
 
+    // DELETE /api/trade/1?userId=1 — cancel a pending order
+    [HttpDelete("{orderId}")]
+    public async Task<IActionResult> CancelOrder(int orderId, [FromQuery] int userId)
+    {
+        var order = await db.Orders.FindAsync(orderId);
+        if (order is null) return NotFound("Order not found");
+        if (order.UserId != userId) return BadRequest("Not your order");
+        if (order.Status != "pending") return BadRequest("Only pending orders can be cancelled");
+
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return NotFound("User not found");
+
+        // Refund liability
+        var refund = order.Side == "back" ? order.Stake : order.Stake * (order.Price - 1);
+        user.Balance += refund;
+        order.Status = "cancelled";
+        await db.SaveChangesAsync();
+
+        return Ok(new { order.Id, order.Status, user.Balance });
+    }
+
     private async Task ShiftAndBroadcast(int oddsId, string side)
     {
         var odd = await db.Odds.Include(o => o.Market).FirstOrDefaultAsync(o => o.Id == oddsId);
