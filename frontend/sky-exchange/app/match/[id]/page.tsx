@@ -145,7 +145,7 @@ export default function MatchPage() {
       const p = winAmount(getUserPrice(selectedOdd), Number(stake));
       setMessage(
         result.status === "matched"
-          ? `🟢 ${t("betMatched")} ₹${Number(stake).toFixed(2)} ${t("on")} ${selectedOdd.outcome} — ${t("win")} ₹${p.toFixed(2)} ${t("profit")}!`
+          ? `🟢 ${t("betMatched")} ₹${Number(stake).toFixed(2)} ${t("on")} ${selectedOdd.outcome} — ${t("get")} ₹${(Number(stake) + p).toFixed(2)}!`
           : `🟡 ${t("betPlaced")}`
       );
       setStake("");
@@ -212,7 +212,7 @@ export default function MatchPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {market.odds.map((odd) => {
               const price = getUserPrice(odd);
-              const win100 = winAmount(price, 100);
+              const return100 = Math.round((100 + winAmount(price, 100)) * 100) / 100;
               return (
                 <button
                   key={odd.id}
@@ -224,7 +224,7 @@ export default function MatchPage() {
                 >
                   <p className="text-sm sm:text-base font-bold text-white">{odd.outcome}</p>
                   <p className="text-green-400 font-bold text-lg mt-2">
-                    {t("bet")} ₹100 → {t("win")} ₹{win100.toFixed(0)}
+                    {t("every")} ₹100 → {t("get")} ₹{return100.toFixed(0)}
                   </p>
                 </button>
               );
@@ -237,7 +237,7 @@ export default function MatchPage() {
         <div className="max-w-md mx-auto mt-4">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
             <h3 className="font-bold text-lg mb-1">{selectedOdd.outcome}</h3>
-            <p className="text-xs text-gray-400 mb-4">{t("bet")} ₹100 → {t("win")} ₹{winAmount(effectivePrice, 100).toFixed(0)} {t("profit")}</p>
+            <p className="text-xs text-gray-400 mb-4">{t("every")} ₹100 → {t("get")} ₹{(100 + winAmount(effectivePrice, 100)).toFixed(0)}</p>
 
             <label className="text-sm text-gray-400 mb-2 block">{t("enterAmount")}</label>
             <div className="grid grid-cols-3 gap-2 mb-3">
@@ -272,7 +272,7 @@ export default function MatchPage() {
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-green-400">✅ {t("ifYouWin")}</span>
-                  <span className="text-green-400 font-bold text-lg">+₹{profit.toFixed(2)}</span>
+                  <span className="text-green-400 font-bold text-lg">{t("get")} ₹{(stakeNum + profit).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-red-400">❌ {t("ifYouLose")}</span>
@@ -292,7 +292,7 @@ export default function MatchPage() {
             ) : (
               <div className="bg-gray-800 border border-yellow-500 rounded-lg p-4">
                 <p className="text-sm font-bold mb-2">{t("confirmBet")}</p>
-                <p className="text-green-400 font-bold mb-1">₹{stakeNum.toFixed(2)} {t("on")} {selectedOdd.outcome} → {t("win")} ₹{profit.toFixed(2)}</p>
+                <p className="text-green-400 font-bold mb-1">₹{stakeNum.toFixed(2)} {t("on")} {selectedOdd.outcome} → {t("get")} ₹{(stakeNum + profit).toFixed(2)}</p>
                 <p className="text-red-400 text-xs mb-3">{t("ifWrongLose")} ₹{stakeNum.toFixed(2)}</p>
                 <div className="flex gap-2">
                   <button onClick={placeTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg">✅ {t("confirm")}</button>
