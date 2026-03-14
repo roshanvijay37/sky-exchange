@@ -52,6 +52,7 @@ public class Odd
     [Column("outcome")] public string Outcome { get; set; } = "";
     [Column("back_price")] public decimal BackPrice { get; set; }
     [Column("lay_price")] public decimal LayPrice { get; set; }
+    [Column("is_locked")] public bool IsLocked { get; set; }
     [Column("last_updated")] public DateTime LastUpdated { get; set; }
     public Market Market { get; set; } = null!;
 }

@@ -441,8 +441,30 @@ export default function AdminPage() {
                 </div>
                 {oddsMsg && <p className="text-sm mt-2">{oddsMsg}</p>}
                 <div className="mt-2 text-xs text-gray-500">
-                  Current: {markets[0]?.odds.map((o) => `${o.outcome}: ${o.backPrice}/${o.layPrice}`).join(" | ")}
+                  Current: {markets[0]?.odds.map((o) => `${o.outcome}: ${o.backPrice}/${o.layPrice}${o.isLocked ? " 🔒" : ""}`).join(" | ")}
                 </div>
+                {markets[0]?.odds.some((o) => o.isLocked) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {markets[0].odds.filter((o) => o.isLocked).map((o) => (
+                      <button
+                        key={o.id}
+                        onClick={async () => {
+                          if (!selectedMatch) return;
+                          await fetchApi(`/admin/matches/${selectedMatch.id}/unlock-odds`, {
+                            method: "POST",
+                            body: JSON.stringify({ outcome: o.outcome }),
+                          });
+                          const data = await fetchApi<Market[]>(`/markets/match/${selectedMatch.id}`);
+                          setMarkets(data);
+                          setOddsMsg(`🔓 ${o.outcome} unlocked — API will update next sync`);
+                        }}
+                        className="text-xs bg-yellow-800 text-yellow-200 px-2 py-1 rounded hover:bg-yellow-700"
+                      >
+                        🔓 Unlock {o.outcome}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Void Match */}

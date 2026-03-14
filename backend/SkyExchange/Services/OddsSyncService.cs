@@ -120,7 +120,7 @@ public class OddsSyncService(IServiceProvider services, IConfiguration config, I
                         foreach (var outcome in h2h.Outcomes)
                         {
                             var odd = market.Odds.FirstOrDefault(o => o.Outcome == outcome.Name);
-                            if (odd != null)
+                            if (odd != null && !odd.IsLocked)
                             {
                                 odd.BackPrice = outcome.Price;
                                 odd.LayPrice = Math.Round(outcome.Price + 0.05m, 2);

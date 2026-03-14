@@ -189,6 +189,7 @@ public class AdminController(AppDbContext db) : ControllerBase
     }
 
     public record SetOddsRequest(string Outcome, decimal BackPrice, decimal LayPrice);
+    public record UnlockOddsRequest(string Outcome);
 
     [HttpPost("matches/{matchId}/set-odds")]
     public async Task<IActionResult> SetOdds(int matchId, [FromBody] SetOddsRequest req)
@@ -205,10 +206,23 @@ public class AdminController(AppDbContext db) : ControllerBase
 
         odd.BackPrice = req.BackPrice;
         odd.LayPrice = req.LayPrice;
+        odd.IsLocked = true;
         odd.LastUpdated = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
-        return Ok(new { matchId, req.Outcome, odd.BackPrice, odd.LayPrice });
+        return Ok(new { matchId, req.Outcome, odd.BackPrice, odd.LayPrice, odd.IsLocked });
+    }
+
+    [HttpPost("matches/{matchId}/unlock-odds")]
+    public async Task<IActionResult> UnlockOdds(int matchId, [FromBody] UnlockOddsRequest req)
+    {
+        var odd = await db.Odds
+            .Include(o => o.Market)
+            .FirstOrDefaultAsync(o => o.Market.MatchId == matchId && o.Outcome == req.Outcome);
+        if (odd is null) return NotFound("Outcome not found");
+        odd.IsLocked = false;
+        await db.SaveChangesAsync();
+        return Ok(new { matchId, req.Outcome, odd.IsLocked });
     }
 
     [HttpPost("matches/{matchId}/void")]

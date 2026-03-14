@@ -12,6 +12,7 @@ export interface Odd {
   outcome: string;
   backPrice: number;
   layPrice: number;
+  isLocked: boolean;
 }
 
 export interface Market {

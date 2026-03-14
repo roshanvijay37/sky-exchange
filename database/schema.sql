@@ -38,6 +38,7 @@ CREATE TABLE odds (
     outcome VARCHAR(100) NOT NULL,        -- e.g. "India", "Australia", "Draw"
     back_price DECIMAL(8,2) NOT NULL,     -- price to buy (back)
     lay_price DECIMAL(8,2) NOT NULL,      -- price to sell (lay)
+    is_locked BOOLEAN NOT NULL DEFAULT false,  -- admin-locked, skip API sync
     last_updated TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
