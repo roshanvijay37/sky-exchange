@@ -45,6 +45,8 @@ public class AuthController(AppDbContext db, IConfiguration config) : Controller
         var user = await db.Users.FirstOrDefaultAsync(u => u.Username == req.Username);
         if (user is null || !VerifyPassword(req.Password, user.PasswordHash))
             return Unauthorized("Invalid username or password");
+        if (user.IsSuspended)
+            return Unauthorized("Account suspended. Contact admin.");
 
         return Ok(new { Token = GenerateToken(user), user.Id, user.Username, user.Balance, user.IsAdmin });
     }

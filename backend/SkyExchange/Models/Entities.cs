@@ -11,6 +11,7 @@ public class User
     [Column("password_hash")] public string PasswordHash { get; set; } = "";
     [Column("balance")] public decimal Balance { get; set; }
     [Column("is_admin")] public bool IsAdmin { get; set; }
+    [Column("is_suspended")] public bool IsSuspended { get; set; }
     [Column("created_at")] public DateTime CreatedAt { get; set; }
 }
 

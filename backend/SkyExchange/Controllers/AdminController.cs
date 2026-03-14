@@ -6,6 +6,7 @@ using SkyExchange.Data;
 namespace SkyExchange.Controllers;
 
 public record SettleRequest(string WinningOutcome);
+public record AdjustBalanceRequest(decimal Amount, string Reason);
 
 [ApiController]
 [Route("api/admin")]
@@ -78,5 +79,42 @@ public class AdminController(AppDbContext db) : ControllerBase
         await db.SaveChangesAsync();
 
         return Ok(new { Message = $"Match settled. Winner: {req.WinningOutcome}", Payouts = payouts });
+    }
+
+    [HttpGet("users")]
+    public async Task<IActionResult> GetUsers()
+    {
+        var users = await db.Users
+            .Select(u => new
+            {
+                u.Id, u.Username, u.Balance, u.IsAdmin, u.IsSuspended, u.CreatedAt,
+                OrderCount = db.Orders.Count(o => o.UserId == u.Id),
+                TradeCount = db.Trades.Count(t => t.BackOrder.UserId == u.Id || t.LayOrder.UserId == u.Id)
+            })
+            .OrderBy(u => u.Id)
+            .ToListAsync();
+        return Ok(users);
+    }
+
+    [HttpPost("users/{userId}/adjust")]
+    public async Task<IActionResult> AdjustBalance(int userId, [FromBody] AdjustBalanceRequest req)
+    {
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return NotFound("User not found");
+        user.Balance += req.Amount;
+        if (user.Balance < 0) user.Balance = 0;
+        await db.SaveChangesAsync();
+        return Ok(new { user.Id, user.Balance, req.Reason });
+    }
+
+    [HttpPost("users/{userId}/suspend")]
+    public async Task<IActionResult> ToggleSuspend(int userId)
+    {
+        var user = await db.Users.FindAsync(userId);
+        if (user is null) return NotFound("User not found");
+        if (user.IsAdmin) return BadRequest("Cannot suspend admin");
+        user.IsSuspended = !user.IsSuspended;
+        await db.SaveChangesAsync();
+        return Ok(new { user.Id, user.IsSuspended });
     }
 }

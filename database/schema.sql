@@ -5,6 +5,7 @@ CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     balance DECIMAL(12,2) NOT NULL DEFAULT 10000.00,
+    is_suspended BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

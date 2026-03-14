@@ -6,19 +6,37 @@ import { fetchApi } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Match, Market } from "../lib/types";
 
+interface AdminUser {
+  id: number;
+  username: string;
+  balance: number;
+  isAdmin: boolean;
+  isSuspended: boolean;
+  createdAt: string;
+  orderCount: number;
+  tradeCount: number;
+}
+
 export default function AdminPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [tab, setTab] = useState<"matches" | "users">("matches");
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [message, setMessage] = useState("");
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [adjustId, setAdjustId] = useState<number | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
 
   useEffect(() => {
     if (!user?.isAdmin) { router.push("/"); return; }
     fetchApi<Match[]>("/matches").then(setMatches);
+    fetchApi<AdminUser[]>("/admin/users").then(setUsers);
   }, [user, router]);
 
+  // Match settlement
   const selectMatch = async (match: Match) => {
     setSelectedMatch(match);
     setMessage("");
@@ -36,6 +54,7 @@ export default function AdminPage() {
       );
       setMessage(`✅ ${result.message} — ${result.payouts.length} payout(s) processed`);
       fetchApi<Match[]>("/matches").then(setMatches);
+      fetchApi<AdminUser[]>("/admin/users").then(setUsers);
       setSelectedMatch(null);
       setMarkets([]);
     } catch (e: unknown) {
@@ -43,70 +62,195 @@ export default function AdminPage() {
     }
   };
 
+  // User management
+  const toggleSuspend = async (userId: number) => {
+    const u = users.find(u => u.id === userId);
+    if (!confirm(`${u?.isSuspended ? "Unsuspend" : "Suspend"} user "${u?.username}"?`)) return;
+    await fetchApi(`/admin/users/${userId}/suspend`, { method: "POST" });
+    fetchApi<AdminUser[]>("/admin/users").then(setUsers);
+  };
+
+  const submitAdjust = async () => {
+    if (!adjustId || !adjustAmount) return;
+    await fetchApi(`/admin/users/${adjustId}/adjust`, {
+      method: "POST",
+      body: JSON.stringify({ amount: Number(adjustAmount), reason: adjustReason }),
+    });
+    setAdjustId(null);
+    setAdjustAmount("");
+    setAdjustReason("");
+    fetchApi<AdminUser[]>("/admin/users").then(setUsers);
+  };
+
   const activeMatches = matches.filter((m) => m.status !== "completed");
   const completedMatches = matches.filter((m) => m.status === "completed");
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">⚙️ Admin — Settle Matches</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-4">⚙️ Admin Panel</h1>
 
-      {/* Active Matches */}
-      <h2 className="text-sm text-gray-400 mb-2">Active Matches</h2>
-      <div className="grid gap-2 mb-6">
-        {activeMatches.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => selectMatch(m)}
-            className={`bg-gray-900 border rounded-lg p-3 text-left transition ${
-              selectedMatch?.id === m.id ? "border-yellow-400" : "border-gray-800 hover:border-gray-600"
-            }`}
-          >
-            <span className="text-xs text-gray-400">{m.sport}</span>
-            <p className="font-semibold">{m.teamA} vs {m.teamB}</p>
-            <span className={`text-xs px-2 py-0.5 rounded ${m.status === "live" ? "bg-green-600" : "bg-gray-700"}`}>
-              {m.status.toUpperCase()}
-            </span>
-          </button>
-        ))}
-        {activeMatches.length === 0 && <p className="text-gray-500 text-sm">No active matches</p>}
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4">
+        <button
+          onClick={() => setTab("matches")}
+          className={`px-4 py-2 rounded-t text-sm font-bold ${tab === "matches" ? "bg-gray-900 text-white" : "bg-gray-800 text-gray-500"}`}
+        >
+          Matches
+        </button>
+        <button
+          onClick={() => setTab("users")}
+          className={`px-4 py-2 rounded-t text-sm font-bold ${tab === "users" ? "bg-gray-900 text-white" : "bg-gray-800 text-gray-500"}`}
+        >
+          Users ({users.length})
+        </button>
       </div>
 
-      {/* Settlement Panel */}
-      {selectedMatch && markets.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
-          <h3 className="font-bold mb-3">
-            Settle: {selectedMatch.teamA} vs {selectedMatch.teamB}
-          </h3>
-          <p className="text-sm text-gray-400 mb-3">Select the winning outcome:</p>
-          <div className="flex gap-2">
-            {markets[0].odds.map((odd) => (
-              <button
-                key={odd.id}
-                onClick={() => settle(odd.outcome)}
-                className="bg-green-800 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold"
-              >
-                {odd.outcome}
-              </button>
-            ))}
-          </div>
-          {message && <p className="mt-3 text-sm">{message}</p>}
-        </div>
-      )}
-
-      {/* Completed Matches */}
-      {completedMatches.length > 0 && (
+      {/* Matches Tab */}
+      {tab === "matches" && (
         <>
-          <h2 className="text-sm text-gray-400 mb-2">Completed Matches</h2>
-          <div className="grid gap-2">
-            {completedMatches.map((m) => (
-              <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3 opacity-60">
+          <h2 className="text-sm text-gray-400 mb-2">Active Matches</h2>
+          <div className="grid gap-2 mb-6">
+            {activeMatches.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => selectMatch(m)}
+                className={`bg-gray-900 border rounded-lg p-3 text-left transition ${
+                  selectedMatch?.id === m.id ? "border-yellow-400" : "border-gray-800 hover:border-gray-600"
+                }`}
+              >
                 <span className="text-xs text-gray-400">{m.sport}</span>
                 <p className="font-semibold">{m.teamA} vs {m.teamB}</p>
-                <span className="text-xs bg-gray-700 px-2 py-0.5 rounded">COMPLETED</span>
-              </div>
+                <span className={`text-xs px-2 py-0.5 rounded ${m.status === "live" ? "bg-green-600" : "bg-gray-700"}`}>
+                  {m.status.toUpperCase()}
+                </span>
+              </button>
             ))}
+            {activeMatches.length === 0 && <p className="text-gray-500 text-sm">No active matches</p>}
           </div>
+
+          {selectedMatch && markets.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
+              <h3 className="font-bold mb-3">
+                Settle: {selectedMatch.teamA} vs {selectedMatch.teamB}
+              </h3>
+              <p className="text-sm text-gray-400 mb-3">Select the winning outcome:</p>
+              <div className="flex flex-wrap gap-2">
+                {markets[0].odds.map((odd) => (
+                  <button
+                    key={odd.id}
+                    onClick={() => settle(odd.outcome)}
+                    className="bg-green-800 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold"
+                  >
+                    {odd.outcome}
+                  </button>
+                ))}
+              </div>
+              {message && <p className="mt-3 text-sm">{message}</p>}
+            </div>
+          )}
+
+          {completedMatches.length > 0 && (
+            <>
+              <h2 className="text-sm text-gray-400 mb-2">Completed Matches</h2>
+              <div className="grid gap-2">
+                {completedMatches.map((m) => (
+                  <div key={m.id} className="bg-gray-900 border border-gray-800 rounded-lg p-3 opacity-60">
+                    <span className="text-xs text-gray-400">{m.sport}</span>
+                    <p className="font-semibold">{m.teamA} vs {m.teamB}</p>
+                    <span className="text-xs bg-gray-700 px-2 py-0.5 rounded">COMPLETED</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </>
+      )}
+
+      {/* Users Tab */}
+      {tab === "users" && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead>
+              <tr className="text-gray-400 text-left border-b border-gray-800">
+                <th className="py-2">User</th>
+                <th>Balance</th>
+                <th>Orders</th>
+                <th>Trades</th>
+                <th>Joined</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className={`border-b border-gray-800/50 ${u.isSuspended ? "opacity-50" : ""}`}>
+                  <td className="py-2">
+                    {u.username}
+                    {u.isAdmin && <span className="ml-1 text-xs text-yellow-400">(admin)</span>}
+                  </td>
+                  <td className="text-yellow-400 font-semibold">${u.balance.toFixed(2)}</td>
+                  <td>{u.orderCount}</td>
+                  <td>{u.tradeCount}</td>
+                  <td className="text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    {u.isSuspended ? (
+                      <span className="text-xs text-red-400">Suspended</span>
+                    ) : (
+                      <span className="text-xs text-green-400">Active</span>
+                    )}
+                  </td>
+                  <td className="space-x-2">
+                    {!u.isAdmin && (
+                      <button
+                        onClick={() => toggleSuspend(u.id)}
+                        className={`text-xs px-2 py-1 rounded ${
+                          u.isSuspended
+                            ? "bg-green-900 text-green-300 hover:bg-green-800"
+                            : "bg-red-900 text-red-300 hover:bg-red-800"
+                        }`}
+                      >
+                        {u.isSuspended ? "Unsuspend" : "Suspend"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setAdjustId(adjustId === u.id ? null : u.id)}
+                      className="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded hover:bg-gray-700"
+                    >
+                      Adjust $
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Adjust Balance Panel */}
+          {adjustId && (
+            <div className="mt-4 bg-gray-900 border border-gray-800 rounded-lg p-4 max-w-sm">
+              <h3 className="font-bold text-sm mb-2">
+                Adjust Balance — {users.find(u => u.id === adjustId)?.username}
+              </h3>
+              <input
+                type="number"
+                placeholder="Amount (negative to deduct)"
+                value={adjustAmount}
+                onChange={(e) => setAdjustAmount(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 mb-2 text-sm"
+              />
+              <input
+                type="text"
+                placeholder="Reason (optional)"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 mb-2 text-sm"
+              />
+              <div className="flex gap-2">
+                <button onClick={submitAdjust} className="bg-yellow-500 text-black text-sm font-bold px-4 py-2 rounded hover:bg-yellow-400">Apply</button>
+                <button onClick={() => setAdjustId(null)} className="bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded hover:bg-gray-600">Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
