@@ -15,7 +15,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddSignalR();
-builder.Services.AddHostedService<OddsEngine>();
 builder.Services.AddHostedService<OddsSyncService>();
 
 // JWT Authentication
