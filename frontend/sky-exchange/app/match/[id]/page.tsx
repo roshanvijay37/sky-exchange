@@ -79,6 +79,7 @@ export default function MatchPage() {
   const [predScoreA, setPredScoreA] = useState("");
   const [predScoreB, setPredScoreB] = useState("");
   const [contestMsg, setContestMsg] = useState("");
+  const [gameTab, setGameTab] = useState<"winlose" | "digit" | "predict">("winlose");
 
   const loadContests = useCallback(async () => {
     const data = await fetchApi<Contest[]>(`/contest/match/${id}`);
@@ -216,10 +217,11 @@ export default function MatchPage() {
   const effectivePrice = selectedOdd ? getUserPrice(selectedOdd) : 0;
   const stakeNum = Number(stake) || 0;
   const profit = winAmount(effectivePrice, stakeNum);
+  const activeContest = contests.find(c => c.status === "open" || c.status === "full");
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-4">
         <span className="text-xs text-gray-400 uppercase">{match.sport}</span>
         <h1 className="text-2xl font-bold">
           {match.teamA} <span className="text-gray-500">vs</span> {match.teamB}
@@ -241,152 +243,180 @@ export default function MatchPage() {
         </div>
       )}
 
-      {markets.map((market) => (
-        <div key={market.id} className="mb-6">
-          <h2 className="text-sm text-gray-400 mb-3">{t("whoWillWin")}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {market.odds.map((odd) => {
-              const price = getUserPrice(odd);
-              const return100 = Math.round((100 + winAmount(price, 100)) * 100) / 100;
-              return (
-                <button
-                  key={odd.id}
-                  onClick={() => canBet && selectOdd(odd)}
-                  className={`rounded-xl p-4 text-center border-2 transition ${
-                    isSuspended || isLocked ? "border-gray-800 bg-gray-900 opacity-50 cursor-not-allowed" :
-                    selectedOdd?.id === odd.id ? "border-yellow-400 bg-gray-800 scale-[1.02]" : "border-gray-700 bg-gray-900 hover:border-yellow-400/50"
-                  }`}
-                >
-                  <p className="text-sm sm:text-base font-bold text-white">{odd.outcome}</p>
-                  <p className="text-green-400 font-bold text-lg mt-2">
-                    {t("every")} ₹100 → {t("get")} ₹{return100.toFixed(0)}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+      {/* Game Tabs */}
+      <div className="flex gap-1 mb-4">
+        {([
+          { key: "winlose" as const, icon: "🏏", label: t("tabWinLose") || "Win/Lose" },
+          { key: "digit" as const, icon: "🎯", label: t("tabDigit") || "Last Digit" },
+          { key: "predict" as const, icon: "🏆", label: t("tabPredict") || "Predict", badge: activeContest ? `${activeContest.filled}/${activeContest.maxPlayers}` : undefined },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setGameTab(tab.key)}
+            className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition ${
+              gameTab === tab.key ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+            }`}
+          >
+            {tab.icon} {tab.label}
+            {tab.badge && (
+              <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${
+                gameTab === tab.key ? "bg-black/20 text-black" : "bg-gray-700 text-gray-300"
+              }`}>{tab.badge}</span>
+            )}
+          </button>
+        ))}
+      </div>
 
-      {selectedOdd && canBet && (
-        <div className="max-w-md mx-auto mt-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-            <h3 className="font-bold text-lg mb-1">{selectedOdd.outcome}</h3>
-            <p className="text-xs text-gray-400 mb-4">{t("every")} ₹100 → {t("get")} ₹{(100 + winAmount(effectivePrice, 100)).toFixed(0)}</p>
-
-            <label className="text-sm text-gray-400 mb-2 block">{t("enterAmount")}</label>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {QUICK_BETS.map((amt) => (
-                <button
-                  key={amt}
-                  onClick={() => setValidStake(String(amt))}
-                  className={`py-2.5 rounded-lg text-sm font-bold transition ${
-                    Number(stake) === amt ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-                >
-                  ₹{amt}
-                </button>
-              ))}
+      {/* ===== Win/Lose Tab ===== */}
+      {gameTab === "winlose" && (
+        <>
+          {markets.map((market) => (
+            <div key={market.id} className="mb-6">
+              <h2 className="text-sm text-gray-400 mb-3">{t("whoWillWin")}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {market.odds.map((odd) => {
+                  const price = getUserPrice(odd);
+                  const return100 = Math.round((100 + winAmount(price, 100)) * 100) / 100;
+                  return (
+                    <button
+                      key={odd.id}
+                      onClick={() => canBet && selectOdd(odd)}
+                      className={`rounded-xl p-4 text-center border-2 transition ${
+                        isSuspended || isLocked ? "border-gray-800 bg-gray-900 opacity-50 cursor-not-allowed" :
+                        selectedOdd?.id === odd.id ? "border-yellow-400 bg-gray-800 scale-[1.02]" : "border-gray-700 bg-gray-900 hover:border-yellow-400/50"
+                      }`}
+                    >
+                      <p className="text-sm sm:text-base font-bold text-white">{odd.outcome}</p>
+                      <p className="text-green-400 font-bold text-lg mt-2">
+                        {t("every")} ₹100 → {t("get")} ₹{return100.toFixed(0)}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <input
-              type="number"
-              placeholder="₹100"
-              min={100}
-              max={3000}
-              step={100}
-              value={stake}
-              onChange={(e) => setValidStake(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 mb-4 text-lg font-bold"
-            />
+          ))}
 
-            {stakeNum > 0 && (
-              <div className="bg-gray-800 rounded-lg p-4 mb-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">{t("youBet")}</span>
-                  <span className="text-white font-bold text-lg">₹{stakeNum.toFixed(2)}</span>
+          {selectedOdd && canBet && (
+            <div className="max-w-md mx-auto mt-4">
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <h3 className="font-bold text-lg mb-1">{selectedOdd.outcome}</h3>
+                <p className="text-xs text-gray-400 mb-4">{t("every")} ₹100 → {t("get")} ₹{(100 + winAmount(effectivePrice, 100)).toFixed(0)}</p>
+
+                <label className="text-sm text-gray-400 mb-2 block">{t("enterAmount")}</label>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {QUICK_BETS.map((amt) => (
+                    <button
+                      key={amt}
+                      onClick={() => setValidStake(String(amt))}
+                      className={`py-2.5 rounded-lg text-sm font-bold transition ${
+                        Number(stake) === amt ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                      }`}
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
                 </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-green-400">✅ {t("ifYouWin")}</span>
-                  <span className="text-green-400 font-bold text-lg">{t("get")} ₹{(stakeNum + profit).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-red-400">❌ {t("ifYouLose")}</span>
-                  <span className="text-red-400 font-bold text-lg">-₹{stakeNum.toFixed(2)}</span>
-                </div>
+                <input
+                  type="number"
+                  placeholder="₹100"
+                  min={100}
+                  max={3000}
+                  step={100}
+                  value={stake}
+                  onChange={(e) => setValidStake(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 mb-4 text-lg font-bold"
+                />
+
+                {stakeNum > 0 && (
+                  <div className="bg-gray-800 rounded-lg p-4 mb-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">{t("youBet")}</span>
+                      <span className="text-white font-bold text-lg">₹{stakeNum.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-green-400">✅ {t("ifYouWin")}</span>
+                      <span className="text-green-400 font-bold text-lg">{t("get")} ₹{(stakeNum + profit).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <span className="text-red-400">❌ {t("ifYouLose")}</span>
+                      <span className="text-red-400 font-bold text-lg">-₹{stakeNum.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {!showConfirm ? (
+                  <button
+                    onClick={confirmTrade}
+                    disabled={stakeNum < 100 || stakeNum > 3000 || stakeNum % 100 !== 0}
+                    className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t("placeBet")}
+                  </button>
+                ) : (
+                  <div className="bg-gray-800 border border-yellow-500 rounded-lg p-4">
+                    <p className="text-sm font-bold mb-2">{t("confirmBet")}</p>
+                    <p className="text-green-400 font-bold mb-1">₹{stakeNum.toFixed(2)} {t("on")} {selectedOdd.outcome} → {t("get")} ₹{(stakeNum + profit).toFixed(2)}</p>
+                    <p className="text-red-400 text-xs mb-3">{t("ifWrongLose")} ₹{stakeNum.toFixed(2)}</p>
+                    <div className="flex gap-2">
+                      <button onClick={placeTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg">✅ {t("confirm")}</button>
+                      <button onClick={() => setShowConfirm(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-lg">{t("cancel")}</button>
+                    </div>
+                  </div>
+                )}
+
+                {message && (
+                  <p className={`mt-3 text-sm font-semibold rounded-lg px-3 py-2 ${
+                    message.startsWith("🟢") ? "bg-green-900/50 border border-green-700 text-green-300" :
+                    message.startsWith("🟡") ? "bg-yellow-900/50 border border-yellow-700 text-yellow-300" :
+                    "bg-red-900/50 border border-red-700 text-red-300"
+                  }`}>{message}</p>
+                )}
               </div>
-            )}
 
-            {!showConfirm ? (
-              <button
-                onClick={confirmTrade}
-                disabled={stakeNum < 100 || stakeNum > 3000 || stakeNum % 100 !== 0}
-                className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 text-base disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t("placeBet")}
-              </button>
-            ) : (
-              <div className="bg-gray-800 border border-yellow-500 rounded-lg p-4">
-                <p className="text-sm font-bold mb-2">{t("confirmBet")}</p>
-                <p className="text-green-400 font-bold mb-1">₹{stakeNum.toFixed(2)} {t("on")} {selectedOdd.outcome} → {t("get")} ₹{(stakeNum + profit).toFixed(2)}</p>
-                <p className="text-red-400 text-xs mb-3">{t("ifWrongLose")} ₹{stakeNum.toFixed(2)}</p>
-                <div className="flex gap-2">
-                  <button onClick={placeTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg">✅ {t("confirm")}</button>
-                  <button onClick={() => setShowConfirm(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-lg">{t("cancel")}</button>
+              {(orderBook.backs.length > 0 || orderBook.lays.length > 0) && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mt-3">
+                  <h3 className="text-sm text-gray-400 mb-2">{t("availableBets")}</h3>
+                  {orderBook.backs.map((b, i) => (
+                    <div key={`b${i}`} className="flex justify-between text-sm py-1.5 border-b border-gray-800">
+                      <span className="text-gray-300">₹{b.totalStake.toFixed(0)} {t("available")}</span>
+                      <span className="text-green-400">{t("win")} ₹{winAmount(b.price, 100).toFixed(0)} {t("per")} ₹100</span>
+                    </div>
+                  ))}
+                  {orderBook.lays.map((l, i) => (
+                    <div key={`l${i}`} className="flex justify-between text-sm py-1.5 border-b border-gray-800">
+                      <span className="text-gray-300">₹{l.totalStake.toFixed(0)} {t("available")}</span>
+                      <span className="text-green-400">{t("win")} ₹{winAmount(l.price, 100).toFixed(0)} {t("per")} ₹100</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )}
-
-            {message && (
-              <p className={`mt-3 text-sm font-semibold rounded-lg px-3 py-2 ${
-                message.startsWith("🟢") ? "bg-green-900/50 border border-green-700 text-green-300" :
-                message.startsWith("🟡") ? "bg-yellow-900/50 border border-yellow-700 text-yellow-300" :
-                "bg-red-900/50 border border-red-700 text-red-300"
-              }`}>{message}</p>
-            )}
-          </div>
-
-          {(orderBook.backs.length > 0 || orderBook.lays.length > 0) && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mt-3">
-              <h3 className="text-sm text-gray-400 mb-2">{t("availableBets")}</h3>
-              {orderBook.backs.map((b, i) => (
-                <div key={`b${i}`} className="flex justify-between text-sm py-1.5 border-b border-gray-800">
-                  <span className="text-gray-300">₹{b.totalStake.toFixed(0)} {t("available")}</span>
-                  <span className="text-green-400">{t("win")} ₹{winAmount(b.price, 100).toFixed(0)} {t("per")} ₹100</span>
-                </div>
-              ))}
-              {orderBook.lays.map((l, i) => (
-                <div key={`l${i}`} className="flex justify-between text-sm py-1.5 border-b border-gray-800">
-                  <span className="text-gray-300">₹{l.totalStake.toFixed(0)} {t("available")}</span>
-                  <span className="text-green-400">{t("win")} ₹{winAmount(l.price, 100).toFixed(0)} {t("per")} ₹100</span>
-                </div>
-              ))}
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
-      {/* Digit Bet Section */}
-      {!isLocked && match.status !== "completed" && (
-        <div className="max-w-md mx-auto mt-8">
+
+      {/* ===== Last Digit Tab ===== */}
+      {gameTab === "digit" && !isLocked && match.status !== "completed" && (
+        <div className="max-w-md mx-auto">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
             <h3 className="font-bold text-lg mb-1">🎯 {t("guessDigit") || "Guess the Last Digit"}</h3>
             <p className="text-xs text-gray-400 mb-4">{t("digitDesc") || "Pick the last digit of a team's score. Win 7× your bet!"}</p>
 
-            {/* Team selector */}
             <div className="flex gap-2 mb-3">
-              {(["A", "B"] as const).map((t) => (
+              {(["A", "B"] as const).map((tm) => (
                 <button
-                  key={t}
-                  onClick={() => setDigitTeam(t)}
+                  key={tm}
+                  onClick={() => setDigitTeam(tm)}
                   className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${
-                    digitTeam === t ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-300"
+                    digitTeam === tm ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-300"
                   }`}
                 >
-                  {t === "A" ? match.teamA : match.teamB}
+                  {tm === "A" ? match.teamA : match.teamB}
                 </button>
               ))}
             </div>
 
-            {/* Stake selector */}
             <div className="flex gap-2 mb-3">
               {[100, 200, 300, 400, 500].map((amt) => (
                 <button
@@ -405,7 +435,6 @@ export default function MatchPage() {
               {t("pickDigit") || "Pick a digit (0-9)"} — {t("win")} ₹{Number(digitStake) * 7}
             </p>
 
-            {/* Digit buttons */}
             <div className="grid grid-cols-5 gap-2">
               {DIGITS.map((d) => (
                 <button
@@ -424,7 +453,6 @@ export default function MatchPage() {
               }`}>{digitMsg}</p>
             )}
 
-            {/* My digit bets */}
             {digitBets.length > 0 && (
               <div className="mt-4 border-t border-gray-800 pt-3">
                 <p className="text-xs text-gray-400 mb-2">{t("yourDigitBets") || "Your digit bets"}</p>
@@ -444,9 +472,10 @@ export default function MatchPage() {
           </div>
         </div>
       )}
-      {/* Score Prediction Contest */}
-      {match.status !== "completed" && contests.filter(c => c.status === "open" || c.status === "full").length > 0 && (
-        <div className="max-w-md mx-auto mt-8">
+
+      {/* ===== Predict Score Tab ===== */}
+      {gameTab === "predict" && (
+        <div className="max-w-md mx-auto">
           {contests.filter(c => c.status !== "cancelled").map((contest) => (
             <div key={contest.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
               <h3 className="font-bold text-lg mb-1">🏆 {t("predictScore") || "Predict the Score"}</h3>
@@ -455,7 +484,6 @@ export default function MatchPage() {
                 {" "}• {t("entry") || "Entry"}: ₹{contest.entryFee} • 🥇₹500 🥈₹300
               </p>
 
-              {/* Slots */}
               <div className="bg-gray-800 rounded-lg p-3 mb-3">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-400">{contest.filled}/{contest.maxPlayers} {t("joined") || "joined"}</span>
@@ -474,7 +502,6 @@ export default function MatchPage() {
                 </div>
               </div>
 
-              {/* Entry form */}
               {contest.status === "open" && !contest.predictions.some(p => p.username === user?.username) && (
                 <div>
                   <div className="grid grid-cols-2 gap-2 mb-2">
@@ -520,16 +547,14 @@ export default function MatchPage() {
                 </div>
               )}
 
-              {/* Already entered */}
               {contest.status === "open" && contest.predictions.some(p => p.username === user?.username) && (
                 <p className="text-sm text-green-400">✅ {t("alreadyEntered") || "You've entered this contest!"}</p>
               )}
 
-              {/* Leaderboard */}
               {contest.predictions.length > 0 && (
                 <div className="mt-3 border-t border-gray-800 pt-3">
                   <p className="text-xs text-gray-400 mb-2">{contest.status === "settled" ? "🏆 " + (t("results") || "Results") : t("participants") || "Participants"}</p>
-                  {contest.predictions.map((p, i) => (
+                  {contest.predictions.map((p) => (
                     <div key={p.id} className={`flex justify-between text-sm py-1.5 border-b border-gray-800/50 ${
                       p.username === user?.username ? "bg-gray-800/50 rounded px-2" : ""
                     }`}>
@@ -549,30 +574,10 @@ export default function MatchPage() {
               )}
             </div>
           ))}
-        </div>
-      )}
 
-      {/* Settled contests */}
-      {contests.filter(c => c.status === "settled").length > 0 && match.status === "completed" && (
-        <div className="max-w-md mx-auto mt-8">
-          {contests.filter(c => c.status === "settled").map((contest) => (
-            <div key={contest.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
-              <h3 className="font-bold text-lg mb-1">🏆 {t("predictScore") || "Predict the Score"} — {t("contestSettled") || "Settled"}</h3>
-              <div className="mt-2">
-                {contest.predictions.map((p) => (
-                  <div key={p.id} className="flex justify-between text-sm py-1.5 border-b border-gray-800/50">
-                    <span>
-                      {p.rank === 1 && "🥇 "}{p.rank === 2 && "🥈 "}
-                      {p.username} — {p.predictedScoreA}-{p.predictedScoreB}
-                      <span className="text-gray-500 ml-1">(off by {p.difference})</span>
-                    </span>
-                    {p.payout > 0 && <span className="text-green-400 font-bold">+₹{p.payout}</span>}
-                  </div>
-                ))}
-                <p className="text-xs text-gray-500 mt-2">Actual: {contest.teamA} {contest.actualScoreA} - {contest.teamB} {contest.actualScoreB}</p>
-              </div>
-            </div>
-          ))}
+          {contests.filter(c => c.status !== "cancelled").length === 0 && (
+            <p className="text-gray-500 text-sm text-center">{t("noContests") || "No contests available for this match"}</p>
+          )}
         </div>
       )}
     </div>
