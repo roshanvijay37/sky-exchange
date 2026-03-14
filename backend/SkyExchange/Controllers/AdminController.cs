@@ -181,17 +181,21 @@ public class AdminController(AppDbContext db) : ControllerBase
 
         var winners = 0;
         var totalPayout = 0m;
+        var totalCommission = 0m;
 
         foreach (var bet in bets)
         {
             var winningDigit = bet.Team == "A" ? lastDigitA : lastDigitB;
             if (bet.Digit == winningDigit)
             {
+                var gross = bet.Stake * 7m;
+                var commission = Math.Round(gross * CommissionRate, 2);
                 bet.Status = "won";
-                bet.Payout = bet.Stake * 7m;
+                bet.Payout = gross - commission;
                 bet.User.Balance += bet.Payout;
                 winners++;
                 totalPayout += bet.Payout;
+                totalCommission += commission;
             }
             else
             {
