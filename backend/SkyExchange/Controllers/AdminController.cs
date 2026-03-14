@@ -418,6 +418,16 @@ public class AdminController(AppDbContext db) : ControllerBase
             .SumAsync(t => t.Stake * (t.Price - 1));
         var totalCommission = Math.Round(settledTrades * CommissionRate, 2);
 
+        // Digit bet stats
+        var digitTotal = await db.DigitBets.CountAsync();
+        var digitVolume = await db.DigitBets.SumAsync(d => d.Stake);
+        var digitWon = await db.DigitBets.CountAsync(d => d.Status == "won");
+        var digitLost = await db.DigitBets.CountAsync(d => d.Status == "lost");
+        var digitPending = await db.DigitBets.CountAsync(d => d.Status == "pending");
+        var digitPayouts = await db.DigitBets.Where(d => d.Status == "won").SumAsync(d => d.Payout);
+        var digitProfit = digitVolume - digitPayouts;
+        var digitCommission = await db.DigitBets.Where(d => d.Status == "won").SumAsync(d => d.Stake * 7m) - digitPayouts;
+
         var matchStats = await db.Matches
             .Where(m => m.Status != "completed")
             .Select(m => new
@@ -464,7 +474,15 @@ public class AdminController(AppDbContext db) : ControllerBase
             TotalCommission = totalCommission,
             CommissionRate = CommissionRate * 100,
             MatchStats = matchStats,
-            TopTraders = topTraders
+            TopTraders = topTraders,
+            DigitTotal = digitTotal,
+            DigitVolume = digitVolume,
+            DigitWon = digitWon,
+            DigitLost = digitLost,
+            DigitPending = digitPending,
+            DigitPayouts = digitPayouts,
+            DigitProfit = digitProfit,
+            DigitCommission = Math.Round(digitCommission, 2)
         });
     }
 }

@@ -49,6 +49,14 @@ interface Dashboard {
   commissionRate: number;
   matchStats: MatchStat[];
   topTraders: TopTrader[];
+  digitTotal: number;
+  digitVolume: number;
+  digitWon: number;
+  digitLost: number;
+  digitPending: number;
+  digitPayouts: number;
+  digitProfit: number;
+  digitCommission: number;
 }
 
 interface ExposureOutcome {
@@ -245,6 +253,47 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+
+          {/* Digit Bet Stats */}
+          {dashboard.digitTotal > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
+              <h3 className="text-sm text-gray-400 mb-2">🎯 Digit Bets</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500">Total Bets</p>
+                  <p className="text-lg font-bold text-white">{dashboard.digitTotal}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Volume</p>
+                  <p className="text-lg font-bold text-yellow-400">₹{dashboard.digitVolume.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">House Profit</p>
+                  <p className={`text-lg font-bold ${dashboard.digitProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {dashboard.digitProfit >= 0 ? "+" : ""}₹{dashboard.digitProfit.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Commission (5%)</p>
+                  <p className="text-lg font-bold text-green-400">₹{dashboard.digitCommission.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Won / Lost / Pending</p>
+                  <p className="text-lg font-bold">
+                    <span className="text-green-400">{dashboard.digitWon}</span>
+                    {" / "}
+                    <span className="text-red-400">{dashboard.digitLost}</span>
+                    {" / "}
+                    <span className="text-yellow-400">{dashboard.digitPending}</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Total Payouts</p>
+                  <p className="text-lg font-bold text-red-400">₹{dashboard.digitPayouts.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Active Match Stats */}
           {dashboard.matchStats.length > 0 && (
