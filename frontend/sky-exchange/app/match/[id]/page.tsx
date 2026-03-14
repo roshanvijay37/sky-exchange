@@ -18,6 +18,7 @@ export default function MatchPage() {
   const [side, setSide] = useState<"back" | "lay">("back");
   const [stake, setStake] = useState("");
   const [message, setMessage] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const loadOrderBook = useCallback(async (oddsId: number) => {
     const data = await fetchApi<{ backs: OrderBookEntry[]; lays: OrderBookEntry[] }>(`/orderbook/${oddsId}`);
@@ -71,12 +72,18 @@ export default function MatchPage() {
     loadOrderBook(odd.id);
   };
 
+  const confirmTrade = () => {
+    if (!selectedOdd || !stake || Number(stake) < 1) return;
+    if (!user) { router.push("/login"); return; }
+    setShowConfirm(true);
+  };
+
   const placeTrade = async () => {
     if (!selectedOdd || !stake) return;
+    setShowConfirm(false);
     setMessage("");
     try {
       const price = side === "back" ? selectedOdd.backPrice : selectedOdd.layPrice;
-      if (!user) { router.push("/login"); return; }
       const result = await fetchApi<{ id: number; status: string; balance: number }>("/trade", {
         method: "POST",
         body: JSON.stringify({ oddsId: selectedOdd.id, side, price, stake: Number(stake) }),
@@ -177,12 +184,32 @@ export default function MatchPage() {
               </p>
             )}
             <button
-              onClick={placeTrade}
+              onClick={confirmTrade}
               className="w-full bg-yellow-500 text-black font-bold py-2 rounded hover:bg-yellow-400 text-sm"
             >
               Place {side.toUpperCase()} Order
             </button>
             {message && <p className="mt-2 text-xs">{message}</p>}
+
+            {/* Confirmation Modal */}
+            {showConfirm && selectedOdd && (
+              <div className="mt-3 bg-gray-800 border border-yellow-500 rounded-lg p-4">
+                <p className="text-sm font-bold mb-2">Confirm Order</p>
+                <div className="text-xs text-gray-300 space-y-1 mb-3">
+                  <p>Outcome: <span className="text-white">{selectedOdd.outcome}</span></p>
+                  <p>Side: <span className={side === "back" ? "text-blue-400" : "text-pink-400"}>{side.toUpperCase()}</span></p>
+                  <p>Price: <span className="text-white">{(side === "back" ? selectedOdd.backPrice : selectedOdd.layPrice).toFixed(2)}</span></p>
+                  <p>Stake: <span className="text-white">${Number(stake).toFixed(2)}</span></p>
+                  <p>Liability: <span className="text-yellow-400">
+                    ${side === "back" ? Number(stake).toFixed(2) : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}
+                  </span></p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={placeTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2 rounded">Confirm</button>
+                  <button onClick={() => setShowConfirm(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm py-2 rounded">Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Order Book */}
