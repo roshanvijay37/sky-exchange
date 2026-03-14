@@ -71,9 +71,11 @@ public class ContestController(AppDbContext db) : ControllerBase
 
         var contest = await db.ScoreContests
             .Include(c => c.Predictions)
+            .Include(c => c.Match)
             .FirstOrDefaultAsync(c => c.Id == contestId);
         if (contest is null) return NotFound("Contest not found");
         if (contest.Status != "open") return BadRequest("Contest is not open");
+        if (contest.Match.IsLocked || contest.Match.IsLockedPredict) return BadRequest("Score prediction is locked for this match");
         if (contest.Predictions.Count >= MaxPlayers) return BadRequest("Contest is full");
         if (contest.Predictions.Any(p => p.UserId == UserId)) return BadRequest("You already entered this contest");
 

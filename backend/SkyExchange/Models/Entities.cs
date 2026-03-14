@@ -29,6 +29,9 @@ public class Match
     [Column("winning_outcome")] public string? WinningOutcome { get; set; }
     [Column("is_visible")] public bool IsVisible { get; set; } = true;
     [Column("is_locked")] public bool IsLocked { get; set; }
+    [Column("is_locked_winlose")] public bool IsLockedWinlose { get; set; }
+    [Column("is_locked_digit")] public bool IsLockedDigit { get; set; }
+    [Column("is_locked_predict")] public bool IsLockedPredict { get; set; }
     [Column("created_at")] public DateTime CreatedAt { get; set; }
     public List<Market> Markets { get; set; } = [];
 }

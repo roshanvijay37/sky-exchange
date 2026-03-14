@@ -27,7 +27,10 @@ public class MatchesController(AppDbContext db) : ControllerBase
                 m.TeamB,
                 m.StartTime,
                 m.Status,
-                m.IsLocked
+                m.IsLocked,
+                m.IsLockedWinlose,
+                m.IsLockedDigit,
+                m.IsLockedPredict
             })
             .ToListAsync();
 
@@ -48,7 +51,10 @@ public class MatchesController(AppDbContext db) : ControllerBase
                 m.TeamB,
                 m.StartTime,
                 m.Status,
-                m.IsLocked
+                m.IsLocked,
+                m.IsLockedWinlose,
+                m.IsLockedDigit,
+                m.IsLockedPredict
             })
             .FirstOrDefaultAsync();
 

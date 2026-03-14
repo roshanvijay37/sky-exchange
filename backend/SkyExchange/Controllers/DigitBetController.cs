@@ -34,7 +34,7 @@ public class DigitBetController(AppDbContext db) : ControllerBase
         if (match is null) return NotFound("Match not found");
         if (match.Status == "completed" || match.Status == "voided")
             return BadRequest("Match is over");
-        if (match.IsLocked) return BadRequest("Match is locked");
+        if (match.IsLocked || match.IsLockedDigit) return BadRequest("Digit bets are locked for this match");
 
         var user = await db.Users.FindAsync(UserId);
         if (user is null) return NotFound();

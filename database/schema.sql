@@ -20,6 +20,9 @@ CREATE TABLE matches (
     winning_outcome VARCHAR(100),                      -- set on settlement
     is_visible BOOLEAN NOT NULL DEFAULT true,          -- admin can hide from users
     is_locked BOOLEAN NOT NULL DEFAULT false,           -- visible but no bets accepted
+    is_locked_winlose BOOLEAN NOT NULL DEFAULT false,   -- lock win/lose bets only
+    is_locked_digit BOOLEAN NOT NULL DEFAULT false,     -- lock digit bets only
+    is_locked_predict BOOLEAN NOT NULL DEFAULT false,   -- lock score prediction only
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

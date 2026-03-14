@@ -80,6 +80,7 @@ export default function MatchPage() {
   const [predScoreB, setPredScoreB] = useState("");
   const [contestMsg, setContestMsg] = useState("");
   const [gameTab, setGameTab] = useState<"winlose" | "digit" | "predict">("winlose");
+  const [tabInitialized, setTabInitialized] = useState(false);
 
   const loadContests = useCallback(async () => {
     const data = await fetchApi<Contest[]>(`/contest/match/${id}`);
@@ -211,9 +212,21 @@ export default function MatchPage() {
 
   if (!match) return <p className="text-gray-400">{t("loading")}</p>;
 
+  // Default to first unlocked tab
+  useEffect(() => {
+    if (!match || tabInitialized) return;
+    if (!match.isLocked && !match.isLockedWinlose) { setGameTab("winlose"); }
+    else if (!match.isLocked && !match.isLockedDigit) { setGameTab("digit"); }
+    else if (!match.isLocked && !match.isLockedPredict) { setGameTab("predict"); }
+    setTabInitialized(true);
+  }, [match, tabInitialized]);
+
   const isSuspended = markets.some(m => m.status === "suspended");
   const isLocked = match.isLocked;
-  const canBet = !isSuspended && !isLocked;
+  const winloseLocked = isLocked || match.isLockedWinlose;
+  const digitLocked = isLocked || match.isLockedDigit;
+  const predictLocked = isLocked || match.isLockedPredict;
+  const canBet = !isSuspended && !winloseLocked;
   const effectivePrice = selectedOdd ? getUserPrice(selectedOdd) : 0;
   const stakeNum = Number(stake) || 0;
   const profit = winAmount(effectivePrice, stakeNum);
@@ -237,7 +250,7 @@ export default function MatchPage() {
         </div>
       )}
 
-      {isSuspended && (
+      {isSuspended && !isLocked && (
         <div className="bg-red-900/50 border border-red-700 rounded-lg p-3 mb-4 text-center">
           <p className="text-red-300 font-bold text-sm">⚠️ {t("suspended")}</p>
         </div>
@@ -246,19 +259,19 @@ export default function MatchPage() {
       {/* Game Tabs */}
       <div className="flex gap-1 mb-4">
         {([
-          { key: "winlose" as const, icon: "🏏", label: t("tabWinLose") || "Win/Lose" },
-          { key: "digit" as const, icon: "🎯", label: t("tabDigit") || "Last Digit" },
-          { key: "predict" as const, icon: "🏆", label: t("tabPredict") || "Predict", badge: activeContest ? `${activeContest.filled}/${activeContest.maxPlayers}` : undefined },
+          { key: "winlose" as const, icon: "🏏", label: t("tabWinLose") || "Win/Lose", locked: winloseLocked },
+          { key: "digit" as const, icon: "🎯", label: t("tabDigit") || "Last Digit", locked: digitLocked },
+          { key: "predict" as const, icon: "🏆", label: t("tabPredict") || "Predict", locked: predictLocked, badge: activeContest ? `${activeContest.filled}/${activeContest.maxPlayers}` : undefined },
         ]).map((tab) => (
           <button
             key={tab.key}
             onClick={() => setGameTab(tab.key)}
             className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition ${
               gameTab === tab.key ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-            }`}
+            } ${tab.locked ? "opacity-60" : ""}`}
           >
-            {tab.icon} {tab.label}
-            {tab.badge && (
+            {tab.locked ? "🔒 " : tab.icon + " "}{tab.label}
+            {tab.badge && !tab.locked && (
               <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full ${
                 gameTab === tab.key ? "bg-black/20 text-black" : "bg-gray-700 text-gray-300"
               }`}>{tab.badge}</span>
@@ -268,7 +281,12 @@ export default function MatchPage() {
       </div>
 
       {/* ===== Win/Lose Tab ===== */}
-      {gameTab === "winlose" && (
+      {gameTab === "winlose" && winloseLocked && (
+        <div className="bg-yellow-900/50 border border-yellow-700 rounded-lg p-3 text-center">
+          <p className="text-yellow-300 font-bold text-sm">🔒 {t("matchLocked") || "Not accepting bets right now"}</p>
+        </div>
+      )}
+      {gameTab === "winlose" && !winloseLocked && (
         <>
           {markets.map((market) => (
             <div key={market.id} className="mb-6">
@@ -282,7 +300,7 @@ export default function MatchPage() {
                       key={odd.id}
                       onClick={() => canBet && selectOdd(odd)}
                       className={`rounded-xl p-4 text-center border-2 transition ${
-                        isSuspended || isLocked ? "border-gray-800 bg-gray-900 opacity-50 cursor-not-allowed" :
+                        isSuspended || winloseLocked ? "border-gray-800 bg-gray-900 opacity-50 cursor-not-allowed" :
                         selectedOdd?.id === odd.id ? "border-yellow-400 bg-gray-800 scale-[1.02]" : "border-gray-700 bg-gray-900 hover:border-yellow-400/50"
                       }`}
                     >
@@ -397,7 +415,12 @@ export default function MatchPage() {
       )}
 
       {/* ===== Last Digit Tab ===== */}
-      {gameTab === "digit" && !isLocked && match.status !== "completed" && (
+      {gameTab === "digit" && digitLocked && (
+        <div className="bg-yellow-900/50 border border-yellow-700 rounded-lg p-3 text-center">
+          <p className="text-yellow-300 font-bold text-sm">🔒 {t("matchLocked") || "Not accepting bets right now"}</p>
+        </div>
+      )}
+      {gameTab === "digit" && !digitLocked && match.status !== "completed" && (
         <div className="max-w-md mx-auto">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
             <h3 className="font-bold text-lg mb-1">🎯 {t("guessDigit") || "Guess the Last Digit"}</h3>
@@ -474,7 +497,12 @@ export default function MatchPage() {
       )}
 
       {/* ===== Predict Score Tab ===== */}
-      {gameTab === "predict" && (
+      {gameTab === "predict" && predictLocked && (
+        <div className="bg-yellow-900/50 border border-yellow-700 rounded-lg p-3 text-center">
+          <p className="text-yellow-300 font-bold text-sm">🔒 {t("matchLocked") || "Not accepting bets right now"}</p>
+        </div>
+      )}
+      {gameTab === "predict" && !predictLocked && (
         <div className="max-w-md mx-auto">
           {contests.filter(c => c.status !== "cancelled").map((contest) => (
             <div key={contest.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">

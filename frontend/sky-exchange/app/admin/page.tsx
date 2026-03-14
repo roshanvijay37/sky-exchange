@@ -77,7 +77,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"dashboard" | "matches" | "users">("dashboard");
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const [matches, setMatches] = useState<(Match & { isVisible: boolean; isLocked: boolean })[]>([]);
+  const [matches, setMatches] = useState<(Match & { isVisible: boolean; isLocked: boolean; isLockedWinlose: boolean; isLockedDigit: boolean; isLockedPredict: boolean })[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [message, setMessage] = useState("");
@@ -98,7 +98,7 @@ export default function AdminPage() {
 
   const loadAll = () => {
     fetchApi<Dashboard>("/admin/dashboard").then(setDashboard);
-    fetchApi<(Match & { isVisible: boolean; isLocked: boolean })[]>("/admin/matches").then(setMatches);
+    fetchApi<(Match & { isVisible: boolean; isLocked: boolean; isLockedWinlose: boolean; isLockedDigit: boolean; isLockedPredict: boolean })[]>("/admin/matches").then(setMatches);
     fetchApi<AdminUser[]>("/admin/users").then(setUsers);
     fetchApi<MatchExposure[]>("/admin/exposure").then(setExposure);
   };
@@ -124,6 +124,15 @@ export default function AdminPage() {
       const data = await fetchApi<Market[]>(`/markets/match/${matchId}`);
       setMarkets(data);
     }
+  };
+
+  const toggleGameLock = async (matchId: number, game: string) => {
+    const m = matches.find(m => m.id === matchId);
+    const label = game === "winlose" ? "Win/Lose" : game === "digit" ? "Last Digit" : "Predict Score";
+    const currentlyLocked = game === "winlose" ? m?.isLockedWinlose : game === "digit" ? m?.isLockedDigit : m?.isLockedPredict;
+    if (!confirm(`${currentlyLocked ? "Unlock" : "Lock"} ${label} for "${m?.teamA} vs ${m?.teamB}"?`)) return;
+    await fetchApi(`/admin/matches/${matchId}/toggle-lock/${game}`, { method: "POST" });
+    loadAll();
   };
 
   const toggleLock = async (matchId: number) => {
@@ -410,19 +419,39 @@ export default function AdminPage() {
                       {m.status.toUpperCase()}
                     </span>
                     {!m.isVisible && <span className="text-xs px-2 py-0.5 rounded bg-red-900 text-red-300">HIDDEN</span>}
-                    {m.isLocked && <span className="text-xs px-2 py-0.5 rounded bg-yellow-900 text-yellow-300">LOCKED</span>}
+                    {m.isLocked && <span className="text-xs px-2 py-0.5 rounded bg-yellow-900 text-yellow-300">ALL LOCKED</span>}
+                    {!m.isLocked && m.isLockedWinlose && <span className="text-xs px-2 py-0.5 rounded bg-yellow-900/50 text-yellow-300">W/L 🔒</span>}
+                    {!m.isLocked && m.isLockedDigit && <span className="text-xs px-2 py-0.5 rounded bg-yellow-900/50 text-yellow-300">Digit 🔒</span>}
+                    {!m.isLocked && m.isLockedPredict && <span className="text-xs px-2 py-0.5 rounded bg-yellow-900/50 text-yellow-300">Predict 🔒</span>}
                   </div>
                 </button>
-                <button
-                  onClick={() => toggleLock(m.id)}
-                  className={`text-xs px-3 py-1.5 rounded font-bold ml-2 ${
-                    m.isLocked
-                      ? "bg-green-900 text-green-300 hover:bg-green-800"
-                      : "bg-yellow-900 text-yellow-300 hover:bg-yellow-800"
-                  }`}
-                >
-                  {m.isLocked ? "🔓 Unlock" : "🔒 Lock"}
-                </button>
+                <div className="flex gap-1 ml-2">
+                  <button
+                    onClick={() => toggleLock(m.id)}
+                    className={`text-xs px-2 py-1.5 rounded font-bold ${
+                      m.isLocked
+                        ? "bg-green-900 text-green-300 hover:bg-green-800"
+                        : "bg-yellow-900 text-yellow-300 hover:bg-yellow-800"
+                    }`}
+                  >
+                    {m.isLocked ? "🔓 All" : "🔒 All"}
+                  </button>
+                  {!m.isLocked && (["winlose", "digit", "predict"] as const).map((g) => {
+                    const locked = g === "winlose" ? m.isLockedWinlose : g === "digit" ? m.isLockedDigit : m.isLockedPredict;
+                    const label = g === "winlose" ? "W/L" : g === "digit" ? "Digit" : "Predict";
+                    return (
+                      <button
+                        key={g}
+                        onClick={() => toggleGameLock(m.id, g)}
+                        className={`text-xs px-2 py-1.5 rounded font-bold ${
+                          locked ? "bg-green-900 text-green-300 hover:bg-green-800" : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                        }`}
+                      >
+                        {locked ? `🔓 ${label}` : `🔒 ${label}`}
+                      </button>
+                    );
+                  })}
+                </div>
                 <button
                   onClick={() => toggleVisibility(m.id)}
                   className={`text-xs px-3 py-1.5 rounded font-bold ml-2 ${

@@ -6,6 +6,9 @@ export interface Match {
   startTime: string;
   status: string;
   isLocked: boolean;
+  isLockedWinlose: boolean;
+  isLockedDigit: boolean;
+  isLockedPredict: boolean;
 }
 
 export interface Odd {

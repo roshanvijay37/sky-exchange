@@ -44,7 +44,7 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
         var odd = await db.Odds.Include(o => o.Market).ThenInclude(m => m.Match).FirstOrDefaultAsync(o => o.Id == req.OddsId);
         if (odd is null) return NotFound("Odds not found");
         if (odd.Market.Status != "open") return BadRequest("Market is closed");
-        if (odd.Market.Match.IsLocked) return BadRequest("This match is currently not accepting bets");
+        if (odd.Market.Match.IsLocked || odd.Market.Match.IsLockedWinlose) return BadRequest("This match is currently not accepting bets");
 
         for (int attempt = 0; attempt < MaxRetries; attempt++)
         {

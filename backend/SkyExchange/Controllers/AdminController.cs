@@ -170,7 +170,7 @@ public class AdminController(AppDbContext db) : ControllerBase
             .OrderBy(m => m.StartTime)
             .Select(m => new
             {
-                m.Id, m.TeamA, m.TeamB, m.StartTime, m.Status, m.IsVisible, m.IsLocked
+                m.Id, m.TeamA, m.TeamB, m.StartTime, m.Status, m.IsVisible, m.IsLocked, m.IsLockedWinlose, m.IsLockedDigit, m.IsLockedPredict
             })
             .ToListAsync();
         return Ok(matches);
@@ -298,6 +298,22 @@ public class AdminController(AppDbContext db) : ControllerBase
         match.IsLocked = !match.IsLocked;
         await db.SaveChangesAsync();
         return Ok(new { matchId, match.IsLocked });
+    }
+
+    [HttpPost("matches/{matchId}/toggle-lock/{game}")]
+    public async Task<IActionResult> ToggleGameLock(int matchId, string game)
+    {
+        var match = await db.Matches.FindAsync(matchId);
+        if (match is null) return NotFound("Match not found");
+        switch (game)
+        {
+            case "winlose": match.IsLockedWinlose = !match.IsLockedWinlose; break;
+            case "digit": match.IsLockedDigit = !match.IsLockedDigit; break;
+            case "predict": match.IsLockedPredict = !match.IsLockedPredict; break;
+            default: return BadRequest("Invalid game type");
+        }
+        await db.SaveChangesAsync();
+        return Ok(new { matchId, game, Locked = game switch { "winlose" => match.IsLockedWinlose, "digit" => match.IsLockedDigit, "predict" => match.IsLockedPredict, _ => false } });
     }
 
     [HttpPost("matches/{matchId}/toggle-visibility")]
