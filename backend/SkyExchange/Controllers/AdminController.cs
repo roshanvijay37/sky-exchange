@@ -270,8 +270,8 @@ public class AdminController(AppDbContext db) : ControllerBase
         var todayVolume = await db.Trades.Where(t => t.CreatedAt >= today).SumAsync(t => t.Stake);
 
         var totalBalances = await db.Users.SumAsync(u => u.Balance);
-        var initialBalance = await db.Users.CountAsync() * 10000m;
-        var platformPnl = initialBalance - totalBalances;
+        var house = await db.Users.FirstOrDefaultAsync(u => u.Username == "__house__");
+        var housePnl = house != null ? house.Balance - 999_999_999m : 0m;
 
         // Commission earned from settled trades
         var settledMatchIds = await db.Matches.Where(m => m.Status == "completed").Select(m => m.Id).ToListAsync();
@@ -322,7 +322,7 @@ public class AdminController(AppDbContext db) : ControllerBase
             TotalVolume = totalVolume,
             TodayVolume = todayVolume,
             TotalBalances = totalBalances,
-            PlatformPnl = platformPnl,
+            PlatformPnl = housePnl,
             TotalCommission = totalCommission,
             CommissionRate = CommissionRate * 100,
             MatchStats = matchStats,
