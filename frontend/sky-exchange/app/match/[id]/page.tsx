@@ -100,8 +100,8 @@ export default function MatchPage() {
       });
       setMessage(
         result.status === "matched"
-          ? `🟢 Bet matched! ${side.toUpperCase()} ${selectedOdd.outcome} at ${price.toFixed(2)} for $${Number(stake).toFixed(2)}`
-          : `🟡 Bet placed — waiting for a counterparty. ${side.toUpperCase()} ${selectedOdd.outcome} at ${price.toFixed(2)} for $${Number(stake).toFixed(2)}`
+          ? `🟢 Bet matched! ${side.toUpperCase()} ${selectedOdd.outcome} at ${price.toFixed(2)} for ₹${Number(stake).toFixed(2)}`
+          : `🟡 Bet placed — waiting for a counterparty. ${side.toUpperCase()} ${selectedOdd.outcome} at ${price.toFixed(2)} for ₹${Number(stake).toFixed(2)}`
       );
       setStake("");
       loadOrderBook(selectedOdd.id);
@@ -184,7 +184,7 @@ export default function MatchPage() {
             </div>
             <input
               type="number"
-              placeholder="Stake ($1 – $5,000)"
+              placeholder="Stake (₹1 – ₹5,000)"
               min={1}
               max={5000}
               step={1}
@@ -194,12 +194,12 @@ export default function MatchPage() {
             />
             {stake && (
               <p className="text-xs text-gray-400 mb-3">
-                Liability: $
+                Liability: ₹
                 {side === "back"
                   ? Number(stake).toFixed(2)
                   : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}
                 {" | "}
-                Potential profit: $
+                Potential profit: ₹
                 {side === "back"
                   ? (Number(stake) * (selectedOdd.backPrice - 1)).toFixed(2)
                   : Number(stake).toFixed(2)}
@@ -227,9 +227,9 @@ export default function MatchPage() {
                   <p>Outcome: <span className="text-white">{selectedOdd.outcome}</span></p>
                   <p>Side: <span className={side === "back" ? "text-blue-400" : "text-pink-400"}>{side.toUpperCase()}</span></p>
                   <p>Price: <span className="text-white">{(side === "back" ? selectedOdd.backPrice : selectedOdd.layPrice).toFixed(2)}</span></p>
-                  <p>Stake: <span className="text-white">${Number(stake).toFixed(2)}</span></p>
+                  <p>Stake: <span className="text-white">₹{Number(stake).toFixed(2)}</span></p>
                   <p>Liability: <span className="text-yellow-400">
-                    ${side === "back" ? Number(stake).toFixed(2) : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}
+                    ₹{side === "back" ? Number(stake).toFixed(2) : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}
                   </span></p>
                 </div>
                 <div className="flex gap-2">
@@ -250,7 +250,7 @@ export default function MatchPage() {
                 {orderBook.backs.map((b, i) => (
                   <div key={i} className="flex justify-between text-xs py-1 border-b border-gray-800">
                     <span className="text-blue-400">{b.price.toFixed(2)}</span>
-                    <span className="text-gray-400">${b.totalStake.toFixed(2)}</span>
+                    <span className="text-gray-400">₹{b.totalStake.toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -260,7 +260,7 @@ export default function MatchPage() {
                 {orderBook.lays.map((l, i) => (
                   <div key={i} className="flex justify-between text-xs py-1 border-b border-gray-800">
                     <span className="text-pink-400">{l.price.toFixed(2)}</span>
-                    <span className="text-gray-400">${l.totalStake.toFixed(2)}</span>
+                    <span className="text-gray-400">₹{l.totalStake.toFixed(2)}</span>
                   </div>
                 ))}
               </div>

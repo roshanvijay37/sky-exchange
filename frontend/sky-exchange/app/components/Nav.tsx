@@ -26,7 +26,7 @@ export default function Nav() {
         <div className="flex items-center gap-3 sm:gap-4 text-sm">
           {user ? (
             <>
-              <span className="text-yellow-400 font-semibold">${user.balance.toFixed(2)}</span>
+              <span className="text-yellow-400 font-semibold">₹{user.balance.toFixed(2)}</span>
               <span className="hidden sm:inline text-gray-600">|</span>
               <span className="hidden sm:inline text-gray-400">{user.username}</span>
               <button onClick={logout} className="hidden sm:inline text-red-400 hover:text-red-300">Logout</button>

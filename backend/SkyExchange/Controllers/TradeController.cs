@@ -191,7 +191,7 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
             await hub.Clients.Group($"user-{match.UserId}")
                 .SendAsync("TradeNotification", new
                 {
-                    Message = $"Your {match.Side.ToUpper()} order on {outcome} was matched at {tradePrice:F2} for ${tradeStake:F2}",
+                    Message = $"Your {match.Side.ToUpper()} order on {outcome} was matched at {tradePrice:F2} for ₹{tradeStake:F2}",
                     Side = match.Side,
                     Outcome = outcome,
                     Price = tradePrice,

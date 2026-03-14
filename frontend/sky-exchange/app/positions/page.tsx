@@ -50,12 +50,12 @@ export default function PositionsPage() {
         <div className="flex items-center gap-4">
           {trades.length > 0 && (
             <span className={`text-sm font-bold ${totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-              P&L: {totalPnl >= 0 ? "+" : ""}${totalPnl.toFixed(2)}
+              P&L: {totalPnl >= 0 ? "+" : ""}₹{totalPnl.toFixed(2)}
             </span>
           )}
           {balance !== null && (
             <span className="bg-gray-900 border border-gray-700 px-4 py-2 rounded text-sm">
-              Balance: <span className="text-yellow-400 font-bold">${balance.toFixed(2)}</span>
+              Balance: <span className="text-yellow-400 font-bold">₹{balance.toFixed(2)}</span>
             </span>
           )}
         </div>
@@ -105,7 +105,7 @@ export default function PositionsPage() {
                     </span>
                   </td>
                   <td>{p.price.toFixed(2)}</td>
-                  <td>${p.stake.toFixed(2)}</td>
+                  <td>₹{p.stake.toFixed(2)}</td>
                   <td>
                     <span className={`text-xs ${
                       p.status === "matched" ? "text-green-400"
@@ -164,13 +164,13 @@ export default function PositionsPage() {
                     </span>
                   </td>
                   <td>{t.price.toFixed(2)}</td>
-                  <td>${t.stake.toFixed(2)}</td>
+                  <td>₹{t.stake.toFixed(2)}</td>
                   <td>
                     {t.pnlStatus === "open" ? (
                       <span className="text-xs text-yellow-400">Open</span>
                     ) : (
                       <span className={`text-xs font-bold ${t.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {t.pnl >= 0 ? "+" : ""}${t.pnl.toFixed(2)}
+                        {t.pnl >= 0 ? "+" : ""}₹{t.pnl.toFixed(2)}
                       </span>
                     )}
                   </td>

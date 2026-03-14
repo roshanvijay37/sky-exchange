@@ -169,8 +169,8 @@ export default function AdminPage() {
             <StatCard label="Total Trades" value={dashboard.totalTrades} />
             <StatCard label="Today Orders" value={dashboard.todayOrders} />
             <StatCard label="Today Trades" value={dashboard.todayTrades} />
-            <StatCard label="Total Volume" value={`$${dashboard.totalVolume.toFixed(2)}`} />
-            <StatCard label="Today Volume" value={`$${dashboard.todayVolume.toFixed(2)}`} />
+            <StatCard label="Total Volume" value={`₹${dashboard.totalVolume.toFixed(2)}`} />
+            <StatCard label="Today Volume" value={`₹${dashboard.todayVolume.toFixed(2)}`} />
           </div>
 
           {/* Platform P&L */}
@@ -179,17 +179,17 @@ export default function AdminPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-gray-500">Total User Balances</p>
-                <p className="text-lg font-bold text-yellow-400">${dashboard.totalBalances.toFixed(2)}</p>
+                <p className="text-lg font-bold text-yellow-400">₹{dashboard.totalBalances.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Platform P&L</p>
                 <p className={`text-lg font-bold ${dashboard.platformPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {dashboard.platformPnl >= 0 ? "+" : ""}${dashboard.platformPnl.toFixed(2)}
+                  {dashboard.platformPnl >= 0 ? "+" : ""}₹{dashboard.platformPnl.toFixed(2)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Commission Earned ({dashboard.commissionRate}%)</p>
-                <p className="text-lg font-bold text-green-400">${dashboard.totalCommission.toFixed(2)}</p>
+                <p className="text-lg font-bold text-green-400">₹{dashboard.totalCommission.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Total Orders</p>
@@ -224,7 +224,7 @@ export default function AdminPage() {
                         </td>
                         <td>{m.orders}</td>
                         <td>{m.trades}</td>
-                        <td className="text-yellow-400">${m.volume.toFixed(2)}</td>
+                        <td className="text-yellow-400">₹{m.volume.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -251,9 +251,9 @@ export default function AdminPage() {
                     {dashboard.topTraders.map((t, i) => (
                       <tr key={i} className="border-b border-gray-800/50">
                         <td className="py-2">{t.username}</td>
-                        <td className="text-yellow-400">${t.balance.toFixed(2)}</td>
+                        <td className="text-yellow-400">₹{t.balance.toFixed(2)}</td>
                         <td>{t.trades}</td>
-                        <td>${t.volume.toFixed(2)}</td>
+                        <td>₹{t.volume.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -377,7 +377,7 @@ export default function AdminPage() {
                     {u.username}
                     {u.isAdmin && <span className="ml-1 text-xs text-yellow-400">(admin)</span>}
                   </td>
-                  <td className="text-yellow-400 font-semibold">${u.balance.toFixed(2)}</td>
+                  <td className="text-yellow-400 font-semibold">₹{u.balance.toFixed(2)}</td>
                   <td>{u.orderCount}</td>
                   <td>{u.tradeCount}</td>
                   <td className="text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
@@ -405,7 +405,7 @@ export default function AdminPage() {
                       onClick={() => setAdjustId(adjustId === u.id ? null : u.id)}
                       className="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded hover:bg-gray-700"
                     >
-                      Adjust $
+                      Adjust ₹
                     </button>
                   </td>
                 </tr>
