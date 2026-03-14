@@ -156,6 +156,7 @@ export default function MatchPage() {
                   <span>BACK</span>
                   <span>LAY</span>
                 </div>
+                <p className="text-[10px] text-green-400 mt-1">Bet ₹100 → Win ₹{((odd.backPrice - 1) * 100).toFixed(0)}</p>
               </button>
             ))}
           </div>
@@ -192,18 +193,21 @@ export default function MatchPage() {
               onChange={(e) => setStake(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 mb-3 text-sm"
             />
-            {stake && (
-              <p className="text-xs text-gray-400 mb-3">
-                Liability: ₹
-                {side === "back"
-                  ? Number(stake).toFixed(2)
-                  : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}
-                {" | "}
-                Potential profit: ₹
-                {side === "back"
-                  ? (Number(stake) * (selectedOdd.backPrice - 1)).toFixed(2)
-                  : Number(stake).toFixed(2)}
-              </p>
+            {stake && Number(stake) > 0 && (
+              <div className="bg-gray-800 rounded-lg p-3 mb-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400">You bet</span>
+                  <span className="text-white font-bold">₹{side === "back" ? Number(stake).toFixed(2) : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-green-400">✅ If you win</span>
+                  <span className="text-green-400 font-bold">+₹{side === "back" ? (Number(stake) * (selectedOdd.backPrice - 1)).toFixed(2) : Number(stake).toFixed(2)} profit</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-red-400">❌ If you lose</span>
+                  <span className="text-red-400 font-bold">-₹{side === "back" ? Number(stake).toFixed(2) : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}</span>
+                </div>
+              </div>
             )}
             <button
               onClick={confirmTrade}
@@ -222,18 +226,16 @@ export default function MatchPage() {
             {/* Confirmation Modal */}
             {showConfirm && selectedOdd && (
               <div className="mt-3 bg-gray-800 border border-yellow-500 rounded-lg p-4">
-                <p className="text-sm font-bold mb-2">Confirm Order</p>
-                <div className="text-xs text-gray-300 space-y-1 mb-3">
-                  <p>Outcome: <span className="text-white">{selectedOdd.outcome}</span></p>
-                  <p>Side: <span className={side === "back" ? "text-blue-400" : "text-pink-400"}>{side.toUpperCase()}</span></p>
-                  <p>Price: <span className="text-white">{(side === "back" ? selectedOdd.backPrice : selectedOdd.layPrice).toFixed(2)}</span></p>
-                  <p>Stake: <span className="text-white">₹{Number(stake).toFixed(2)}</span></p>
-                  <p>Liability: <span className="text-yellow-400">
-                    ₹{side === "back" ? Number(stake).toFixed(2) : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}
-                  </span></p>
+                <p className="text-sm font-bold mb-3">Confirm Your Bet</p>
+                <div className="text-sm space-y-2 mb-3">
+                  <p className="text-gray-300">{selectedOdd.outcome} — <span className={side === "back" ? "text-blue-400" : "text-pink-400"}>{side.toUpperCase()}</span></p>
+                  <div className="bg-gray-900 rounded p-2">
+                    <p className="text-green-400 font-bold">Bet ₹{side === "back" ? Number(stake).toFixed(2) : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)} → Win ₹{side === "back" ? (Number(stake) * (selectedOdd.backPrice - 1)).toFixed(2) : Number(stake).toFixed(2)} profit</p>
+                    <p className="text-red-400 text-xs mt-1">If wrong, you lose ₹{side === "back" ? Number(stake).toFixed(2) : (Number(stake) * (selectedOdd.layPrice - 1)).toFixed(2)}</p>
+                  </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={placeTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2 rounded">Confirm</button>
+                  <button onClick={placeTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2 rounded">Confirm Bet</button>
                   <button onClick={() => setShowConfirm(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm py-2 rounded">Cancel</button>
                 </div>
               </div>
