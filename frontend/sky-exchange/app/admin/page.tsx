@@ -51,6 +51,19 @@ interface Dashboard {
   topTraders: TopTrader[];
 }
 
+interface ExposureOutcome {
+  outcome: string;
+  housePnl: number;
+}
+
+interface MatchExposure {
+  matchId: number;
+  match: string;
+  status: string;
+  totalVolume: number;
+  outcomes: ExposureOutcome[];
+}
+
 export default function AdminPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -68,11 +81,13 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
   const [newBalance, setNewBalance] = useState("10000");
   const [createMsg, setCreateMsg] = useState("");
+  const [exposure, setExposure] = useState<MatchExposure[]>([]);
 
   const loadAll = () => {
     fetchApi<Dashboard>("/admin/dashboard").then(setDashboard);
     fetchApi<(Match & { isVisible: boolean })[]>("/admin/matches").then(setMatches);
     fetchApi<AdminUser[]>("/admin/users").then(setUsers);
+    fetchApi<MatchExposure[]>("/admin/exposure").then(setExposure);
   };
 
   useEffect(() => {
@@ -251,6 +266,33 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* House Exposure */}
+          {exposure.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm text-gray-400 mb-2">🏠 House Exposure (Live)</h3>
+              <div className="grid gap-3">
+                {exposure.map((m) => (
+                  <div key={m.matchId} className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="font-bold text-sm">{m.match}</p>
+                      <span className="text-xs text-gray-400">Volume: ₹{m.totalVolume.toFixed(0)}</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {m.outcomes.map((o) => (
+                        <div key={o.outcome} className={`rounded-lg p-3 border ${o.housePnl >= 0 ? "border-green-800 bg-green-900/20" : "border-red-800 bg-red-900/20"}`}>
+                          <p className="text-xs text-gray-400">If {o.outcome} wins</p>
+                          <p className={`text-lg font-bold ${o.housePnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            {o.housePnl >= 0 ? "+" : ""}₹{o.housePnl.toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

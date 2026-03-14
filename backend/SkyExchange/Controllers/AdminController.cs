@@ -188,6 +188,68 @@ public class AdminController(AppDbContext db) : ControllerBase
         return Ok(new { matchId, MarketStatus = newStatus });
     }
 
+    [HttpGet("exposure")]
+    public async Task<IActionResult> GetExposure()
+    {
+        var house = await db.Users.FirstOrDefaultAsync(u => u.Username == "__house__");
+        if (house is null) return Ok(Array.Empty<object>());
+
+        var activeMatches = await db.Matches
+            .Where(m => m.Status != "completed")
+            .Include(m => m.Markets).ThenInclude(m => m.Odds)
+            .ToListAsync();
+
+        var result = new List<object>();
+
+        foreach (var match in activeMatches)
+        {
+            var oddIds = match.Markets.SelectMany(m => m.Odds).Select(o => o.Id).ToList();
+            var trades = await db.Trades
+                .Where(t => oddIds.Contains(t.OddsId))
+                .Include(t => t.Odd)
+                .Include(t => t.BackOrder)
+                .Include(t => t.LayOrder)
+                .ToListAsync();
+
+            if (trades.Count == 0) continue;
+
+            var outcomes = match.Markets.SelectMany(m => m.Odds).Select(o => o.Outcome).Distinct();
+            var outcomeExposures = new List<object>();
+
+            foreach (var outcome in outcomes)
+            {
+                var housePnl = 0m;
+                foreach (var trade in trades)
+                {
+                    var profit = trade.Stake * (trade.Price - 1);
+                    var isThisOutcome = trade.Odd.Outcome == outcome;
+
+                    if (trade.BackOrder.UserId == house.Id)
+                    {
+                        housePnl += isThisOutcome ? profit : -trade.Stake;
+                    }
+                    else if (trade.LayOrder.UserId == house.Id)
+                    {
+                        housePnl += isThisOutcome ? -profit : trade.Stake;
+                    }
+                }
+                outcomeExposures.Add(new { Outcome = outcome, HousePnl = Math.Round(housePnl, 2) });
+            }
+
+            var totalVolume = trades.Sum(t => t.Stake);
+            result.Add(new
+            {
+                MatchId = match.Id,
+                Match = $"{match.TeamA} vs {match.TeamB}",
+                match.Status,
+                TotalVolume = totalVolume,
+                Outcomes = outcomeExposures
+            });
+        }
+
+        return Ok(result);
+    }
+
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboard()
     {
