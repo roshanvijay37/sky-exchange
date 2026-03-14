@@ -163,6 +163,46 @@ public class AdminController(AppDbContext db) : ControllerBase
         return Ok(matches);
     }
 
+    public record SettleDigitsRequest(int ScoreA, int ScoreB);
+
+    [HttpPost("matches/{matchId}/settle-digits")]
+    public async Task<IActionResult> SettleDigits(int matchId, [FromBody] SettleDigitsRequest req)
+    {
+        var match = await db.Matches.FindAsync(matchId);
+        if (match is null) return NotFound("Match not found");
+
+        var lastDigitA = req.ScoreA % 10;
+        var lastDigitB = req.ScoreB % 10;
+
+        var bets = await db.DigitBets
+            .Where(d => d.MatchId == matchId && d.Status == "pending")
+            .Include(d => d.User)
+            .ToListAsync();
+
+        var winners = 0;
+        var totalPayout = 0m;
+
+        foreach (var bet in bets)
+        {
+            var winningDigit = bet.Team == "A" ? lastDigitA : lastDigitB;
+            if (bet.Digit == winningDigit)
+            {
+                bet.Status = "won";
+                bet.Payout = bet.Stake * 7m;
+                bet.User.Balance += bet.Payout;
+                winners++;
+                totalPayout += bet.Payout;
+            }
+            else
+            {
+                bet.Status = "lost";
+            }
+        }
+
+        await db.SaveChangesAsync();
+        return Ok(new { Message = $"Score: {req.ScoreA}-{req.ScoreB} (digits: {lastDigitA},{lastDigitB}). {winners}/{bets.Count} won. Payout: ₹{totalPayout}" });
+    }
+
     [HttpPost("matches/{matchId}/toggle-lock")]
     public async Task<IActionResult> ToggleLock(int matchId)
     {

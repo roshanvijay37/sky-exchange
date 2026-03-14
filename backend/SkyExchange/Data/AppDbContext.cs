@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Odd> Odds => Set<Odd>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Trade> Trades => Set<Trade>();
+    public DbSet<DigitBet> DigitBets => Set<DigitBet>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +35,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(t => t.BackOrder).WithMany().HasForeignKey(t => t.BackOrderId);
             e.HasOne(t => t.LayOrder).WithMany().HasForeignKey(t => t.LayOrderId);
             e.HasOne(t => t.Odd).WithMany().HasForeignKey(t => t.OddsId);
+        });
+        modelBuilder.Entity<DigitBet>(e =>
+        {
+            e.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId);
+            e.HasOne(d => d.Match).WithMany().HasForeignKey(d => d.MatchId);
         });
     }
 }

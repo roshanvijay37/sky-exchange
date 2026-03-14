@@ -10,6 +10,16 @@ import { Match, Market, Odd, OrderBookEntry } from "../../lib/types";
 
 const PLATFORM_CUT = 0.2;
 const MARGIN = 0.10;
+const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+interface DigitBetRecord {
+  id: number;
+  team: string;
+  digit: number;
+  stake: number;
+  status: string;
+  payout: number;
+}
 
 function getUserPrice(odd: Odd) {
   const wBack = odd.backPrice * (1 - MARGIN);
@@ -36,6 +46,17 @@ export default function MatchPage() {
   const [message, setMessage] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const [digitTeam, setDigitTeam] = useState<"A" | "B">("A");
+  const [digitStake, setDigitStake] = useState("100");
+  const [digitMsg, setDigitMsg] = useState("");
+  const [digitBets, setDigitBets] = useState<DigitBetRecord[]>([]);
+
+  const loadDigitBets = useCallback(async () => {
+    if (!user) return;
+    const data = await fetchApi<DigitBetRecord[]>(`/digit-bet/match/${id}`);
+    setDigitBets(data);
+  }, [id, user]);
+
   const loadOrderBook = useCallback(async (oddsId: number) => {
     const data = await fetchApi<{ backs: OrderBookEntry[]; lays: OrderBookEntry[] }>(`/orderbook/${oddsId}`);
     setOrderBook(data);
@@ -44,7 +65,8 @@ export default function MatchPage() {
   useEffect(() => {
     fetchApi<Match>(`/matches/${id}`).then(setMatch);
     fetchApi<Market[]>(`/markets/match/${id}`).then(setMarkets);
-  }, [id]);
+    loadDigitBets();
+  }, [id, loadDigitBets]);
 
   useEffect(() => {
     const conn = getConnection();
@@ -131,6 +153,23 @@ export default function MatchPage() {
       refreshBalance();
     } catch (e: unknown) {
       setMessage(`❌ ${e instanceof Error ? e.message : "Error"}`);
+    }
+  };
+
+  const placeDigitBet = async (digit: number) => {
+    if (!user) { router.push("/login"); return; }
+    const s = Number(digitStake);
+    if (!confirm(`Bet ₹${s} on last digit ${digit} of ${digitTeam === "A" ? match?.teamA : match?.teamB}'s score?`)) return;
+    try {
+      await fetchApi("/digit-bet", {
+        method: "POST",
+        body: JSON.stringify({ matchId: Number(id), team: digitTeam, digit, stake: s }),
+      });
+      setDigitMsg(`🟢 Bet ₹${s} on digit ${digit} — win ₹${s * 7} if correct!`);
+      refreshBalance();
+      loadDigitBets();
+    } catch (e: unknown) {
+      setDigitMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
     }
   };
 
@@ -288,6 +327,86 @@ export default function MatchPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+      {/* Digit Bet Section */}
+      {!isLocked && match.status !== "completed" && (
+        <div className="max-w-md mx-auto mt-8">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <h3 className="font-bold text-lg mb-1">🎯 {t("guessDigit") || "Guess the Last Digit"}</h3>
+            <p className="text-xs text-gray-400 mb-4">{t("digitDesc") || "Pick the last digit of a team's score. Win 7× your bet!"}</p>
+
+            {/* Team selector */}
+            <div className="flex gap-2 mb-3">
+              {(["A", "B"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setDigitTeam(t)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${
+                    digitTeam === t ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-300"
+                  }`}
+                >
+                  {t === "A" ? match.teamA : match.teamB}
+                </button>
+              ))}
+            </div>
+
+            {/* Stake selector */}
+            <div className="flex gap-2 mb-3">
+              {[100, 200, 300, 400, 500].map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => setDigitStake(String(amt))}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${
+                    Number(digitStake) === amt ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-300"
+                  }`}
+                >
+                  ₹{amt}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-400 mb-2 text-center">
+              {t("pickDigit") || "Pick a digit (0-9)"} — {t("win")} ₹{Number(digitStake) * 7}
+            </p>
+
+            {/* Digit buttons */}
+            <div className="grid grid-cols-5 gap-2">
+              {DIGITS.map((d) => (
+                <button
+                  key={d}
+                  onClick={() => placeDigitBet(d)}
+                  className="bg-gray-800 hover:bg-purple-700 text-white font-bold text-lg py-3 rounded-lg transition border border-gray-700 hover:border-purple-500"
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+
+            {digitMsg && (
+              <p className={`mt-3 text-sm font-semibold rounded-lg px-3 py-2 ${
+                digitMsg.startsWith("🟢") ? "bg-green-900/50 border border-green-700 text-green-300" : "bg-red-900/50 border border-red-700 text-red-300"
+              }`}>{digitMsg}</p>
+            )}
+
+            {/* My digit bets */}
+            {digitBets.length > 0 && (
+              <div className="mt-4 border-t border-gray-800 pt-3">
+                <p className="text-xs text-gray-400 mb-2">{t("yourDigitBets") || "Your digit bets"}</p>
+                {digitBets.map((b) => (
+                  <div key={b.id} className="flex justify-between text-sm py-1.5 border-b border-gray-800/50">
+                    <span>{b.team === "A" ? match.teamA : match.teamB} → digit {b.digit}</span>
+                    <span className="flex gap-2">
+                      <span className="text-gray-400">₹{b.stake}</span>
+                      <span className={b.status === "won" ? "text-green-400 font-bold" : b.status === "lost" ? "text-red-400" : "text-yellow-400"}>
+                        {b.status === "won" ? `+₹${b.payout}` : b.status === "lost" ? "Lost" : "Pending"}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

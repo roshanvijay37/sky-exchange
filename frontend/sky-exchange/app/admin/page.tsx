@@ -81,6 +81,9 @@ export default function AdminPage() {
   const [newPassword, setNewPassword] = useState("");
   const [newBalance, setNewBalance] = useState("10000");
   const [createMsg, setCreateMsg] = useState("");
+  const [scoreA, setScoreA] = useState("");
+  const [scoreB, setScoreB] = useState("");
+  const [digitMsg, setDigitMsg] = useState("");
   const [exposure, setExposure] = useState<MatchExposure[]>([]);
   const [oddsMsg, setOddsMsg] = useState("");
 
@@ -471,6 +474,33 @@ export default function AdminPage() {
                   ))}
                 </div>
                 {oddsMsg && <p className="text-sm mt-2">{oddsMsg}</p>}
+              </div>
+
+              {/* Settle Digits */}
+              <div className="mt-4 border-t border-gray-800 pt-3">
+                <p className="text-sm text-gray-400 mb-2">🎯 Settle Digit Bets (enter final score):</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <input type="number" min={0} placeholder={`${selectedMatch.teamA} score`} value={scoreA} onChange={(e) => setScoreA(e.target.value)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm" />
+                  <input type="number" min={0} placeholder={`${selectedMatch.teamB} score`} value={scoreB} onChange={(e) => setScoreB(e.target.value)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm" />
+                  <button
+                    onClick={async () => {
+                      if (!selectedMatch || scoreA === "" || scoreB === "") return;
+                      if (!confirm(`Settle digit bets with score ${scoreA}-${scoreB}?`)) return;
+                      try {
+                        const res = await fetchApi<{ message: string }>(`/admin/matches/${selectedMatch.id}/settle-digits`, {
+                          method: "POST",
+                          body: JSON.stringify({ scoreA: Number(scoreA), scoreB: Number(scoreB) }),
+                        });
+                        setDigitMsg(`✅ ${res.message}`);
+                        setScoreA(""); setScoreB("");
+                      } catch (e: unknown) {
+                        setDigitMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
+                      }
+                    }}
+                    className="bg-purple-700 hover:bg-purple-600 text-white text-sm font-bold px-4 py-2 rounded"
+                  >Settle Digits</button>
+                </div>
+                {digitMsg && <p className="text-sm mt-2">{digitMsg}</p>}
               </div>
 
               {/* Void Match */}

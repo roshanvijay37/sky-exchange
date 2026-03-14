@@ -87,3 +87,19 @@ public class Trade
     public Order LayOrder { get; set; } = null!;
     public Odd Odd { get; set; } = null!;
 }
+
+[Table("digit_bets")]
+public class DigitBet
+{
+    [Key, Column("id")] public int Id { get; set; }
+    [Column("user_id")] public int UserId { get; set; }
+    [Column("match_id")] public int MatchId { get; set; }
+    [Column("team")] public string Team { get; set; } = "";
+    [Column("digit")] public int Digit { get; set; }
+    [Column("stake")] public decimal Stake { get; set; }
+    [Column("status")] public string Status { get; set; } = "pending";
+    [Column("payout")] public decimal Payout { get; set; }
+    [Column("created_at")] public DateTime CreatedAt { get; set; }
+    public User User { get; set; } = null!;
+    public Match Match { get; set; } = null!;
+}

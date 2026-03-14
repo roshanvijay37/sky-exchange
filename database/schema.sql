@@ -73,3 +73,19 @@ CREATE INDEX idx_orders_odds_id ON orders(odds_id);
 CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_trades_odds_id ON trades(odds_id);
+
+-- Digit Bets: lottery-style last digit guessing game
+CREATE TABLE digit_bets (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id),
+    match_id INT NOT NULL REFERENCES matches(id),
+    team VARCHAR(1) NOT NULL,             -- 'A' or 'B'
+    digit INT NOT NULL,                   -- 0-9
+    stake DECIMAL(12,2) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending, won, lost
+    payout DECIMAL(12,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_digit_bets_match ON digit_bets(match_id);
+CREATE INDEX idx_digit_bets_user ON digit_bets(user_id);
