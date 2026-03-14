@@ -116,7 +116,7 @@ export default function MatchPage() {
       {markets.map((market) => (
         <div key={market.id} className="mb-6">
           <h2 className="text-sm text-gray-400 mb-2">{market.name}</h2>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {market.odds.map((odd) => (
               <button
                 key={odd.id}
@@ -125,7 +125,7 @@ export default function MatchPage() {
                   selectedOdd?.id === odd.id ? "border-yellow-400 bg-gray-800" : "border-gray-700 bg-gray-900 hover:border-gray-500"
                 }`}
               >
-                <p className="text-sm text-gray-400">{odd.outcome}</p>
+                <p className="text-xs sm:text-sm text-gray-400">{odd.outcome}</p>
                 <div className="flex justify-center gap-4 mt-1">
                   <span className="text-blue-400 font-bold">{odd.backPrice.toFixed(2)}</span>
                   <span className="text-pink-400 font-bold">{odd.layPrice.toFixed(2)}</span>
@@ -142,7 +142,7 @@ export default function MatchPage() {
 
       {/* Trade Panel + Order Book (side by side) */}
       {selectedOdd && (
-        <div className="grid grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {/* Trade Panel */}
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
             <h3 className="font-bold mb-3">Place Trade — {selectedOdd.outcome}</h3>

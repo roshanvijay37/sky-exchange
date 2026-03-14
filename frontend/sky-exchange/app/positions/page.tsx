@@ -45,8 +45,8 @@ export default function PositionsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">My Positions</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+        <h1 className="text-xl sm:text-2xl font-bold">My Positions</h1>
         <div className="flex items-center gap-4">
           {trades.length > 0 && (
             <span className={`text-sm font-bold ${totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
@@ -82,7 +82,8 @@ export default function PositionsPage() {
         positions.length === 0 ? (
           <p className="text-gray-500">No orders yet. Go place some trades!</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[500px]">
             <thead>
               <tr className="text-gray-400 text-left border-b border-gray-800">
                 <th className="py-2">Outcome</th>
@@ -130,6 +131,7 @@ export default function PositionsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )
       )}
 
@@ -138,7 +140,8 @@ export default function PositionsPage() {
         trades.length === 0 ? (
           <p className="text-gray-500">No matched trades yet.</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="text-gray-400 text-left border-b border-gray-800">
                 <th className="py-2">Match</th>
@@ -176,6 +179,7 @@ export default function PositionsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )
       )}
     </div>

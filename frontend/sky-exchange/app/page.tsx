@@ -21,7 +21,7 @@ export default function Home() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Live & Upcoming Matches</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-4">Live & Upcoming Matches</h1>
       <div className="grid gap-3">
         {matches.map((m) => (
           <Link
@@ -35,7 +35,7 @@ export default function Home() {
                 <span className="text-xs text-gray-600">•</span>
                 <span className="text-xs text-gray-400">{formatDate(m.startTime)}</span>
               </div>
-              <p className="text-lg font-semibold">
+              <p className="text-base sm:text-lg font-semibold">
                 {m.teamA} <span className="text-gray-500">vs</span> {m.teamB}
               </p>
             </div>
