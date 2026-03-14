@@ -92,6 +92,7 @@ public class AdminController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> GetUsers()
     {
         var users = await db.Users
+            .Where(u => u.Username != "__house__")
             .Select(u => new
             {
                 u.Id, u.Username, u.Balance, u.IsAdmin, u.IsSuspended, u.CreatedAt,

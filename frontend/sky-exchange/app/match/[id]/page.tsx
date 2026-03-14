@@ -91,7 +91,7 @@ export default function MatchPage() {
     loadOrderBook(odd.id);
   };
 
-  const QUICK_BETS = [100, 200, 500, 1000, 2000, 5000];
+  const QUICK_BETS = [100, 200, 500, 1000, 2000, 3000];
 
   const setValidStake = (val: string) => {
     setStake(val);
@@ -102,8 +102,8 @@ export default function MatchPage() {
   const confirmTrade = () => {
     if (!selectedOdd || !stake) return;
     const s = Number(stake);
-    if (s < 100 || s > 5000 || s % 100 !== 0) {
-      setMessage("❌ Bet must be ₹100 to ₹5000 in multiples of ₹100");
+    if (s < 100 || s > 3000 || s % 100 !== 0) {
+      setMessage("❌ Bet must be ₹100 to ₹3000 in multiples of ₹100");
       return;
     }
     if (!user) { router.push("/login"); return; }
@@ -210,7 +210,7 @@ export default function MatchPage() {
               type="number"
               placeholder="₹100"
               min={100}
-              max={5000}
+              max={3000}
               step={100}
               value={stake}
               onChange={(e) => setValidStake(e.target.value)}
@@ -237,7 +237,7 @@ export default function MatchPage() {
             {!showConfirm ? (
               <button
                 onClick={confirmTrade}
-                disabled={stakeNum < 100 || stakeNum > 5000 || stakeNum % 100 !== 0}
+                disabled={stakeNum < 100 || stakeNum > 3000 || stakeNum % 100 !== 0}
                 className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t("placeBet")}

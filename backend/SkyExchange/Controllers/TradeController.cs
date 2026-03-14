@@ -22,7 +22,7 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
     private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     private const decimal MinStake = 100m;
-    private const decimal MaxStake = 5000m;
+    private const decimal MaxStake = 3000m;
     private const decimal MinPrice = 1.01m;
     private const decimal MaxPrice = 1000m;
     private const int MaxRetries = 3;
@@ -144,6 +144,20 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
             });
     }
 
+    private const string HouseUsername = "__house__";
+
+    private async Task<User> GetOrCreateHouse()
+    {
+        var house = await db.Users.FirstOrDefaultAsync(u => u.Username == HouseUsername);
+        if (house is null)
+        {
+            house = new User { Username = HouseUsername, PasswordHash = "", Balance = 999_999_999m, CreatedAt = DateTime.UtcNow };
+            db.Users.Add(house);
+            await db.SaveChangesAsync();
+        }
+        return house;
+    }
+
     private async Task TryMatch(Order incoming)
     {
         var oppositeSide = incoming.Side == "back" ? "lay" : "back";
@@ -202,5 +216,38 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
         }
 
         await db.SaveChangesAsync();
+
+        // If still unmatched, house takes the other side
+        if (incoming.Status == "pending" && incoming.Stake > 0)
+        {
+            var house = await GetOrCreateHouse();
+            var houseOrder = new Order
+            {
+                UserId = house.Id,
+                OddsId = incoming.OddsId,
+                Side = oppositeSide,
+                Price = incoming.Price,
+                Stake = incoming.Stake,
+                Status = "matched",
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Orders.Add(houseOrder);
+
+            var backOrder = incoming.Side == "back" ? incoming : houseOrder;
+            var layOrder = incoming.Side == "lay" ? incoming : houseOrder;
+
+            db.Trades.Add(new Trade
+            {
+                BackOrderId = backOrder.Id,
+                LayOrderId = layOrder.Id,
+                OddsId = incoming.OddsId,
+                Price = incoming.Price,
+                Stake = incoming.Stake,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            incoming.Status = "matched";
+            await db.SaveChangesAsync();
+        }
     }
 }
