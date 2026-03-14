@@ -188,24 +188,22 @@ public class AdminController(AppDbContext db) : ControllerBase
         return Ok(new { matchId, MarketStatus = newStatus });
     }
 
-    public record SetOddsRequest(string Outcome, decimal BackPrice, decimal LayPrice);
+    public record SetOddsRequest(string Outcome, decimal Price);
     public record UnlockOddsRequest(string Outcome);
 
     [HttpPost("matches/{matchId}/set-odds")]
     public async Task<IActionResult> SetOdds(int matchId, [FromBody] SetOddsRequest req)
     {
-        if (req.BackPrice < 1.01m || req.LayPrice < 1.01m)
-            return BadRequest("Prices must be >= 1.01");
-        if (req.LayPrice <= req.BackPrice)
-            return BadRequest("Lay price must be greater than back price");
+        if (req.Price < 1.10m)
+            return BadRequest("Price must be >= 1.10");
 
         var odd = await db.Odds
             .Include(o => o.Market)
             .FirstOrDefaultAsync(o => o.Market.MatchId == matchId && o.Outcome == req.Outcome);
         if (odd is null) return NotFound("Outcome not found for this match");
 
-        odd.BackPrice = req.BackPrice;
-        odd.LayPrice = req.LayPrice;
+        odd.BackPrice = Math.Round(req.Price - 0.05m, 2);
+        odd.LayPrice = Math.Round(req.Price + 0.05m, 2);
         odd.IsLocked = true;
         odd.LastUpdated = DateTime.UtcNow;
         await db.SaveChangesAsync();

@@ -82,9 +82,6 @@ export default function AdminPage() {
   const [newBalance, setNewBalance] = useState("10000");
   const [createMsg, setCreateMsg] = useState("");
   const [exposure, setExposure] = useState<MatchExposure[]>([]);
-  const [oddsOutcome, setOddsOutcome] = useState("");
-  const [oddsBack, setOddsBack] = useState("");
-  const [oddsLay, setOddsLay] = useState("");
   const [oddsMsg, setOddsMsg] = useState("");
 
   const loadAll = () => {
@@ -406,65 +403,56 @@ export default function AdminPage() {
 
               {/* Set Odds */}
               <div className="mt-4 border-t border-gray-800 pt-3">
-                <p className="text-sm text-gray-400 mb-2">📊 Override Odds:</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <select
-                    value={oddsOutcome}
-                    onChange={(e) => setOddsOutcome(e.target.value)}
-                    className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
-                  >
-                    <option value="">Outcome</option>
-                    {markets[0]?.odds.map((o) => (
-                      <option key={o.id} value={o.outcome}>{o.outcome}</option>
-                    ))}
-                  </select>
-                  <input type="number" step="0.01" placeholder="Back price" value={oddsBack} onChange={(e) => setOddsBack(e.target.value)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm" />
-                  <input type="number" step="0.01" placeholder="Lay price" value={oddsLay} onChange={(e) => setOddsLay(e.target.value)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm" />
-                  <button
-                    onClick={async () => {
-                      if (!selectedMatch || !oddsOutcome || !oddsBack || !oddsLay) return;
-                      try {
-                        await fetchApi(`/admin/matches/${selectedMatch.id}/set-odds`, {
-                          method: "POST",
-                          body: JSON.stringify({ outcome: oddsOutcome, backPrice: Number(oddsBack), layPrice: Number(oddsLay) }),
-                        });
-                        setOddsMsg(`✅ ${oddsOutcome} odds updated`);
-                        setOddsOutcome(""); setOddsBack(""); setOddsLay("");
-                      } catch (e: unknown) {
-                        setOddsMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
-                      }
-                    }}
-                    className="bg-blue-700 hover:bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded"
-                  >
-                    Set Odds
-                  </button>
+                <p className="text-sm text-gray-400 mb-2">📊 Set Odds (enter true odds, spread auto-applied):</p>
+                <div className="grid gap-2">
+                  {markets[0]?.odds.map((o) => (
+                    <div key={o.id} className="flex items-center gap-2">
+                      <span className="text-sm w-40 truncate">{o.outcome} {o.isLocked ? "🔒" : ""}</span>
+                      <span className="text-xs text-gray-500">now: {((o.backPrice + o.layPrice) / 2).toFixed(2)}</span>
+                      <input
+                        type="number" step="0.01" placeholder="e.g. 1.50"
+                        id={`odds-${o.id}`}
+                        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm w-24"
+                      />
+                      <button
+                        onClick={async () => {
+                          const input = document.getElementById(`odds-${o.id}`) as HTMLInputElement;
+                          const price = Number(input.value);
+                          if (!price || !selectedMatch) return;
+                          try {
+                            await fetchApi(`/admin/matches/${selectedMatch.id}/set-odds`, {
+                              method: "POST",
+                              body: JSON.stringify({ outcome: o.outcome, price }),
+                            });
+                            input.value = "";
+                            setOddsMsg(`✅ ${o.outcome} → ${price} (locked)`);
+                            const data = await fetchApi<Market[]>(`/markets/match/${selectedMatch.id}`);
+                            setMarkets(data);
+                          } catch (e: unknown) {
+                            setOddsMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
+                          }
+                        }}
+                        className="bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded"
+                      >Set</button>
+                      {o.isLocked && (
+                        <button
+                          onClick={async () => {
+                            if (!selectedMatch) return;
+                            await fetchApi(`/admin/matches/${selectedMatch.id}/unlock-odds`, {
+                              method: "POST",
+                              body: JSON.stringify({ outcome: o.outcome }),
+                            });
+                            const data = await fetchApi<Market[]>(`/markets/match/${selectedMatch.id}`);
+                            setMarkets(data);
+                            setOddsMsg(`🔓 ${o.outcome} unlocked`);
+                          }}
+                          className="text-xs bg-yellow-800 text-yellow-200 px-2 py-1 rounded hover:bg-yellow-700"
+                        >🔓 Unlock</button>
+                      )}
+                    </div>
+                  ))}
                 </div>
                 {oddsMsg && <p className="text-sm mt-2">{oddsMsg}</p>}
-                <div className="mt-2 text-xs text-gray-500">
-                  Current: {markets[0]?.odds.map((o) => `${o.outcome}: ${o.backPrice}/${o.layPrice}${o.isLocked ? " 🔒" : ""}`).join(" | ")}
-                </div>
-                {markets[0]?.odds.some((o) => o.isLocked) && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {markets[0].odds.filter((o) => o.isLocked).map((o) => (
-                      <button
-                        key={o.id}
-                        onClick={async () => {
-                          if (!selectedMatch) return;
-                          await fetchApi(`/admin/matches/${selectedMatch.id}/unlock-odds`, {
-                            method: "POST",
-                            body: JSON.stringify({ outcome: o.outcome }),
-                          });
-                          const data = await fetchApi<Market[]>(`/markets/match/${selectedMatch.id}`);
-                          setMarkets(data);
-                          setOddsMsg(`🔓 ${o.outcome} unlocked — API will update next sync`);
-                        }}
-                        className="text-xs bg-yellow-800 text-yellow-200 px-2 py-1 rounded hover:bg-yellow-700"
-                      >
-                        🔓 Unlock {o.outcome}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Void Match */}
