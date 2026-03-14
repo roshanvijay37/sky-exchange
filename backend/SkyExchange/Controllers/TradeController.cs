@@ -1,10 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using SkyExchange.Data;
-using SkyExchange.Hubs;
 using SkyExchange.Models;
 
 namespace SkyExchange.Controllers;
@@ -14,7 +12,7 @@ public record TradeRequest(int OddsId, string Side, decimal Price, decimal Stake
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : ControllerBase
+public class TradeController(AppDbContext db) : ControllerBase
 {
     private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -64,7 +62,6 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
         await db.SaveChangesAsync();
 
         await TryMatch(order);
-        await ShiftAndBroadcast(req.OddsId, req.Side);
 
         return Ok(new { order.Id, order.Status, user.Balance });
     }
@@ -86,25 +83,6 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
         await db.SaveChangesAsync();
 
         return Ok(new { order.Id, order.Status, user.Balance });
-    }
-
-    private async Task ShiftAndBroadcast(int oddsId, string side)
-    {
-        var odd = await db.Odds.Include(o => o.Market).FirstOrDefaultAsync(o => o.Id == oddsId);
-        if (odd is null) return;
-
-        var shift = side == "back" ? -0.02m : 0.02m;
-        odd.BackPrice = Math.Max(1.01m, odd.BackPrice + shift);
-        odd.LayPrice = odd.BackPrice + 0.05m;
-        odd.LastUpdated = DateTime.UtcNow;
-        await db.SaveChangesAsync();
-
-        await hub.Clients.Group($"match-{odd.Market.MatchId}")
-            .SendAsync("OddsUpdated", new
-            {
-                MarketId = odd.MarketId,
-                Odds = new[] { new { odd.Id, odd.Outcome, odd.BackPrice, odd.LayPrice } }
-            });
     }
 
     private async Task TryMatch(Order incoming)
