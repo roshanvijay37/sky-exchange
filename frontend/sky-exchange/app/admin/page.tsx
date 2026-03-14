@@ -1,18 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { fetchApi } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { Match, Market } from "../lib/types";
 
 export default function AdminPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (!user?.isAdmin) { router.push("/"); return; }
     fetchApi<Match[]>("/matches").then(setMatches);
-  }, []);
+  }, [user, router]);
 
   const selectMatch = async (match: Match) => {
     setSelectedMatch(match);

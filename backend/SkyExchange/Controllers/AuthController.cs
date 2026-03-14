@@ -36,7 +36,7 @@ public class AuthController(AppDbContext db, IConfiguration config) : Controller
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        return Ok(new { Token = GenerateToken(user), user.Id, user.Username, user.Balance });
+        return Ok(new { Token = GenerateToken(user), user.Id, user.Username, user.Balance, user.IsAdmin });
     }
 
     [HttpPost("login")]
@@ -46,7 +46,7 @@ public class AuthController(AppDbContext db, IConfiguration config) : Controller
         if (user is null || !VerifyPassword(req.Password, user.PasswordHash))
             return Unauthorized("Invalid username or password");
 
-        return Ok(new { Token = GenerateToken(user), user.Id, user.Username, user.Balance });
+        return Ok(new { Token = GenerateToken(user), user.Id, user.Username, user.Balance, user.IsAdmin });
     }
 
     private string GenerateToken(User user)
@@ -56,7 +56,8 @@ public class AuthController(AppDbContext db, IConfiguration config) : Controller
             issuer: config["Jwt:Issuer"],
             claims: [
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username)
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Role, user.IsAdmin ? "admin" : "user")
             ],
             expires: DateTime.UtcNow.AddDays(7),
             signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)

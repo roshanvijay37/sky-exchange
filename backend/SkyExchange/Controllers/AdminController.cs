@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SkyExchange.Data;
@@ -8,6 +9,7 @@ public record SettleRequest(string WinningOutcome);
 
 [ApiController]
 [Route("api/admin")]
+[Authorize(Roles = "admin")]
 public class AdminController(AppDbContext db) : ControllerBase
 {
     // POST /api/admin/settle/3 — settle a match with the winning outcome

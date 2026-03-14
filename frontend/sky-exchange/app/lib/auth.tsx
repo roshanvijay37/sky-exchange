@@ -7,6 +7,7 @@ interface User {
   username: string;
   balance: number;
   token: string;
+  isAdmin: boolean;
 }
 
 interface AuthContextType {
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    save({ id: data.id, username: data.username, balance: data.balance, token: data.token });
+    save({ id: data.id, username: data.username, balance: data.balance, token: data.token, isAdmin: data.isAdmin });
   };
 
   const login = (u: string, p: string) => authCall("login", u, p);

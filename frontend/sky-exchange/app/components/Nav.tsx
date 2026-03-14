@@ -12,7 +12,7 @@ export default function Nav() {
         <Link href="/" className="text-xl font-bold text-yellow-400">⚡ Sky Exchange</Link>
         <Link href="/" className="text-gray-300 hover:text-white text-sm">Matches</Link>
         {user && <Link href="/positions" className="text-gray-300 hover:text-white text-sm">My Positions</Link>}
-        <Link href="/admin" className="text-gray-300 hover:text-white text-sm">Admin</Link>
+        {user?.isAdmin && <Link href="/admin" className="text-gray-300 hover:text-white text-sm">Admin</Link>}
       </div>
       <div className="flex items-center gap-4 text-sm">
         {user ? (
