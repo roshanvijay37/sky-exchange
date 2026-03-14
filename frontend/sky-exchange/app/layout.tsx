@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-gray-950 text-white min-h-screen">
         <AuthProvider>
           <Nav />
-          <main className="max-w-5xl mx-auto px-3 py-3 sm:p-4">{children}</main>
+          <main className="max-w-5xl mx-auto px-3 py-3 sm:p-4 pb-20 sm:pb-4">{children}</main>
           <Toasts />
           <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')` }} />
         </AuthProvider>
