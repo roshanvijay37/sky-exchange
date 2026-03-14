@@ -145,6 +145,7 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
     private async Task TryMatch(Order incoming)
     {
         var oppositeSide = incoming.Side == "back" ? "lay" : "back";
+        var odd = await db.Odds.FindAsync(incoming.OddsId);
 
         var candidates = await db.Orders
             .Where(o => o.OddsId == incoming.OddsId
@@ -184,6 +185,18 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
 
             if (incoming.Stake == 0) incoming.Status = "matched";
             if (match.Stake == 0) match.Status = "matched";
+
+            // Notify the counterparty
+            var outcome = odd?.Outcome ?? "";
+            await hub.Clients.Group($"user-{match.UserId}")
+                .SendAsync("TradeNotification", new
+                {
+                    Message = $"Your {match.Side.ToUpper()} order on {outcome} was matched at {tradePrice:F2} for ${tradeStake:F2}",
+                    Side = match.Side,
+                    Outcome = outcome,
+                    Price = tradePrice,
+                    Stake = tradeStake
+                });
         }
 
         await db.SaveChangesAsync();

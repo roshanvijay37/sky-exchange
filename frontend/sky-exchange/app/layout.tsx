@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Nav from "./components/Nav";
+import Toasts from "./components/Toasts";
 import { AuthProvider } from "./lib/auth";
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <Nav />
           <main className="max-w-5xl mx-auto px-3 py-3 sm:p-4">{children}</main>
+          <Toasts />
         </AuthProvider>
       </body>
     </html>
