@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshBalance: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -53,8 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = (u: string, p: string) => authCall("register", u, p);
   const logout = () => { setUser(null); localStorage.removeItem("sky_user"); };
 
+  const refreshBalance = async () => {
+    if (!user) return;
+    const res = await fetch(`${API}/user/me`, { headers: { Authorization: `Bearer ${user.token}` } });
+    if (!res.ok) return;
+    const data = await res.json();
+    save({ ...user, balance: data.balance });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, refreshBalance }}>
       {children}
     </AuthContext.Provider>
   );

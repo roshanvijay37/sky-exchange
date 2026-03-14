@@ -9,7 +9,7 @@ import { Match, Market, Odd, OrderBookEntry } from "../../lib/types";
 
 export default function MatchPage() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, refreshBalance } = useAuth();
   const router = useRouter();
   const [match, setMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
@@ -84,6 +84,7 @@ export default function MatchPage() {
       setMessage(`✅ Order #${result.id} placed (${result.status}). Balance: $${result.balance.toFixed(2)}`);
       setStake("");
       loadOrderBook(selectedOdd.id);
+      refreshBalance();
     } catch (e: unknown) {
       setMessage(`❌ ${e instanceof Error ? e.message : "Error"}`);
     }

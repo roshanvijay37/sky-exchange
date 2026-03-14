@@ -7,7 +7,7 @@ import { useAuth } from "../lib/auth";
 import { Position } from "../lib/types";
 
 export default function PositionsPage() {
-  const { user } = useAuth();
+  const { user, refreshBalance } = useAuth();
   const router = useRouter();
   const [balance, setBalance] = useState<number | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -30,6 +30,7 @@ export default function PositionsPage() {
       );
       setBalance(result.balance);
       load();
+      refreshBalance();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Error cancelling order");
     }

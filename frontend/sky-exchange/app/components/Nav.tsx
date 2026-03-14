@@ -1,10 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "../lib/auth";
 
 export default function Nav() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshBalance } = useAuth();
+
+  useEffect(() => {
+    if (user) refreshBalance();
+  }, []);
 
   return (
     <nav className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
@@ -17,6 +22,8 @@ export default function Nav() {
       <div className="flex items-center gap-4 text-sm">
         {user ? (
           <>
+            <span className="text-yellow-400 font-semibold">${user.balance.toFixed(2)}</span>
+            <span className="text-gray-600">|</span>
             <span className="text-gray-400">{user.username}</span>
             <button onClick={logout} className="text-red-400 hover:text-red-300">Logout</button>
           </>
