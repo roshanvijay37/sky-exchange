@@ -5,10 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import { getConnection } from "../../lib/signalr";
 import { useAuth } from "../../lib/auth";
+import { useI18n } from "../../lib/i18n";
 import { Match, Market, Odd, OrderBookEntry } from "../../lib/types";
 
-const PLATFORM_CUT = 0.2; // 20% of spread
-const MARGIN = 0.05; // 5% widen each side
+const PLATFORM_CUT = 0.2;
+const MARGIN = 0.05;
 
 function getUserPrice(odd: Odd) {
   const wBack = odd.backPrice * (1 - MARGIN);
@@ -25,6 +26,7 @@ function winAmount(price: number, stake: number) {
 export default function MatchPage() {
   const { id } = useParams();
   const { user, refreshBalance } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const [match, setMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
@@ -46,21 +48,16 @@ export default function MatchPage() {
 
   useEffect(() => {
     const conn = getConnection();
-
     const start = async () => {
       if (conn.state === "Disconnected") await conn.start();
       await conn.invoke("JoinMatch", Number(id));
     };
-
     conn.on("OrderBookUpdated", (data: { oddsId: number; backs: OrderBookEntry[]; lays: OrderBookEntry[] }) => {
       setSelectedOdd((current) => {
-        if (current && current.id === data.oddsId) {
-          setOrderBook({ backs: data.backs, lays: data.lays });
-        }
+        if (current && current.id === data.oddsId) setOrderBook({ backs: data.backs, lays: data.lays });
         return current;
       });
     });
-
     conn.on("OddsUpdated", (data: { marketId: number; odds: Odd[] }) => {
       setMarkets((prev) =>
         prev.map((m) =>
@@ -78,9 +75,7 @@ export default function MatchPage() {
         return current;
       });
     });
-
     start();
-
     return () => {
       conn.invoke("LeaveMatch", Number(id)).catch(() => {});
       conn.off("OddsUpdated");
@@ -112,11 +107,11 @@ export default function MatchPage() {
         method: "POST",
         body: JSON.stringify({ oddsId: selectedOdd.id, side: "back", price, stake: Number(stake) }),
       });
-      const profit = winAmount(getUserPrice(selectedOdd), Number(stake));
+      const p = winAmount(getUserPrice(selectedOdd), Number(stake));
       setMessage(
         result.status === "matched"
-          ? `🟢 Bet matched! You bet ₹${Number(stake).toFixed(2)} on ${selectedOdd.outcome} — win ₹${profit.toFixed(2)} profit!`
-          : `🟡 Bet placed — waiting for someone to take the other side.`
+          ? `🟢 ${t("betMatched")} ₹${Number(stake).toFixed(2)} ${t("on")} ${selectedOdd.outcome} — ${t("win")} ₹${p.toFixed(2)} ${t("profit")}!`
+          : `🟡 ${t("betPlaced")}`
       );
       setStake("");
       loadOrderBook(selectedOdd.id);
@@ -126,7 +121,7 @@ export default function MatchPage() {
     }
   };
 
-  if (!match) return <p className="text-gray-400">Loading...</p>;
+  if (!match) return <p className="text-gray-400">{t("loading")}</p>;
 
   const isSuspended = markets.some(m => m.status === "suspended");
   const effectivePrice = selectedOdd ? getUserPrice(selectedOdd) : 0;
@@ -135,27 +130,25 @@ export default function MatchPage() {
 
   return (
     <div>
-      {/* Match Header */}
       <div className="mb-6">
         <span className="text-xs text-gray-400 uppercase">{match.sport}</span>
         <h1 className="text-2xl font-bold">
           {match.teamA} <span className="text-gray-500">vs</span> {match.teamB}
         </h1>
         <span className={`text-xs font-bold px-2 py-1 rounded ${match.status === "live" ? "bg-green-600" : "bg-gray-700"}`}>
-          {match.status.toUpperCase()}
+          {match.status === "live" ? t("live") : t("upcoming")}
         </span>
       </div>
 
       {isSuspended && (
         <div className="bg-red-900/50 border border-red-700 rounded-lg p-3 mb-4 text-center">
-          <p className="text-red-300 font-bold text-sm">⚠️ MARKET SUSPENDED — Betting is paused</p>
+          <p className="text-red-300 font-bold text-sm">⚠️ {t("suspended")}</p>
         </div>
       )}
 
-      {/* Outcome Cards */}
       {markets.map((market) => (
         <div key={market.id} className="mb-6">
-          <h2 className="text-sm text-gray-400 mb-3">Who will win?</h2>
+          <h2 className="text-sm text-gray-400 mb-3">{t("whoWillWin")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {market.odds.map((odd) => {
               const price = getUserPrice(odd);
@@ -171,7 +164,7 @@ export default function MatchPage() {
                 >
                   <p className="text-sm sm:text-base font-bold text-white">{odd.outcome}</p>
                   <p className="text-green-400 font-bold text-lg mt-2">
-                    Bet ₹100 → Win ₹{win100.toFixed(0)}
+                    {t("bet")} ₹100 → {t("win")} ₹{win100.toFixed(0)}
                   </p>
                 </button>
               );
@@ -180,14 +173,13 @@ export default function MatchPage() {
         </div>
       ))}
 
-      {/* Bet Panel */}
       {selectedOdd && !isSuspended && (
         <div className="max-w-md mx-auto mt-4">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
             <h3 className="font-bold text-lg mb-1">{selectedOdd.outcome}</h3>
-            <p className="text-xs text-gray-400 mb-4">Bet ₹100 → Win ₹{winAmount(effectivePrice, 100).toFixed(0)} profit</p>
+            <p className="text-xs text-gray-400 mb-4">{t("bet")} ₹100 → {t("win")} ₹{winAmount(effectivePrice, 100).toFixed(0)} {t("profit")}</p>
 
-            <label className="text-sm text-gray-400 mb-1 block">Enter your bet amount</label>
+            <label className="text-sm text-gray-400 mb-1 block">{t("enterAmount")}</label>
             <input
               type="number"
               placeholder="₹100"
@@ -202,15 +194,15 @@ export default function MatchPage() {
             {stakeNum > 0 && (
               <div className="bg-gray-800 rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">You bet</span>
+                  <span className="text-gray-400">{t("youBet")}</span>
                   <span className="text-white font-bold text-lg">₹{stakeNum.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
-                  <span className="text-green-400">✅ If you win</span>
+                  <span className="text-green-400">✅ {t("ifYouWin")}</span>
                   <span className="text-green-400 font-bold text-lg">+₹{profit.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
-                  <span className="text-red-400">❌ If you lose</span>
+                  <span className="text-red-400">❌ {t("ifYouLose")}</span>
                   <span className="text-red-400 font-bold text-lg">-₹{stakeNum.toFixed(2)}</span>
                 </div>
               </div>
@@ -222,16 +214,16 @@ export default function MatchPage() {
                 disabled={stakeNum < 1}
                 className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Place Bet
+                {t("placeBet")}
               </button>
             ) : (
               <div className="bg-gray-800 border border-yellow-500 rounded-lg p-4">
-                <p className="text-sm font-bold mb-2">Confirm your bet?</p>
-                <p className="text-green-400 font-bold mb-1">₹{stakeNum.toFixed(2)} on {selectedOdd.outcome} → Win ₹{profit.toFixed(2)}</p>
-                <p className="text-red-400 text-xs mb-3">If wrong, you lose ₹{stakeNum.toFixed(2)}</p>
+                <p className="text-sm font-bold mb-2">{t("confirmBet")}</p>
+                <p className="text-green-400 font-bold mb-1">₹{stakeNum.toFixed(2)} {t("on")} {selectedOdd.outcome} → {t("win")} ₹{profit.toFixed(2)}</p>
+                <p className="text-red-400 text-xs mb-3">{t("ifWrongLose")} ₹{stakeNum.toFixed(2)}</p>
                 <div className="flex gap-2">
-                  <button onClick={placeTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg">✅ Confirm</button>
-                  <button onClick={() => setShowConfirm(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-lg">Cancel</button>
+                  <button onClick={placeTrade} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg">✅ {t("confirm")}</button>
+                  <button onClick={() => setShowConfirm(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-3 rounded-lg">{t("cancel")}</button>
                 </div>
               </div>
             )}
@@ -245,20 +237,19 @@ export default function MatchPage() {
             )}
           </div>
 
-          {/* Available Bets */}
           {(orderBook.backs.length > 0 || orderBook.lays.length > 0) && (
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mt-3">
-              <h3 className="text-sm text-gray-400 mb-2">Available bets from other users</h3>
+              <h3 className="text-sm text-gray-400 mb-2">{t("availableBets")}</h3>
               {orderBook.backs.map((b, i) => (
                 <div key={`b${i}`} className="flex justify-between text-sm py-1.5 border-b border-gray-800">
-                  <span className="text-gray-300">₹{b.totalStake.toFixed(0)} available</span>
-                  <span className="text-green-400">Win ₹{winAmount(b.price, 100).toFixed(0)} per ₹100</span>
+                  <span className="text-gray-300">₹{b.totalStake.toFixed(0)} {t("available")}</span>
+                  <span className="text-green-400">{t("win")} ₹{winAmount(b.price, 100).toFixed(0)} {t("per")} ₹100</span>
                 </div>
               ))}
               {orderBook.lays.map((l, i) => (
                 <div key={`l${i}`} className="flex justify-between text-sm py-1.5 border-b border-gray-800">
-                  <span className="text-gray-300">₹{l.totalStake.toFixed(0)} available</span>
-                  <span className="text-green-400">Win ₹{winAmount(l.price, 100).toFixed(0)} per ₹100</span>
+                  <span className="text-gray-300">₹{l.totalStake.toFixed(0)} {t("available")}</span>
+                  <span className="text-green-400">{t("win")} ₹{winAmount(l.price, 100).toFixed(0)} {t("per")} ₹100</span>
                 </div>
               ))}
             </div>

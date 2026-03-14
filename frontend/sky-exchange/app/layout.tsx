@@ -3,6 +3,7 @@ import "./globals.css";
 import Nav from "./components/Nav";
 import Toasts from "./components/Toasts";
 import { AuthProvider } from "./lib/auth";
+import { I18nProvider } from "./lib/i18n";
 
 export const metadata: Metadata = {
   title: "Sky Exchange",
@@ -21,9 +22,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-gray-950 text-white min-h-screen">
         <AuthProvider>
-          <Nav />
-          <main className="max-w-5xl mx-auto px-3 py-3 sm:p-4 pb-20 sm:pb-4">{children}</main>
-          <Toasts />
+          <I18nProvider>
+            <Nav />
+            <main className="max-w-5xl mx-auto px-3 py-3 sm:p-4 pb-20 sm:pb-4">{children}</main>
+            <Toasts />
+          </I18nProvider>
           <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js')` }} />
         </AuthProvider>
       </body>

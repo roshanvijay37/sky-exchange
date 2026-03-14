@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchApi } from "./lib/api";
 import { Match } from "./lib/types";
+import { useI18n } from "./lib/i18n";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -14,14 +15,21 @@ function formatDate(iso: string) {
 
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
+  const { t } = useI18n();
 
   useEffect(() => {
     fetchApi<Match[]>("/matches").then(setMatches);
   }, []);
 
+  const statusLabel = (s: string) => {
+    if (s === "live") return t("live");
+    if (s === "completed") return t("completed");
+    return t("upcoming");
+  };
+
   return (
     <div>
-      <h1 className="text-xl sm:text-2xl font-bold mb-4">Live & Upcoming Matches</h1>
+      <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("liveUpcoming")}</h1>
       <div className="grid gap-3">
         {matches.map((m) => (
           <Link
@@ -48,11 +56,11 @@ export default function Home() {
                   : "bg-gray-700 text-gray-300"
               }`}
             >
-              {m.status.toUpperCase()}
+              {statusLabel(m.status)}
             </span>
           </Link>
         ))}
-        {matches.length === 0 && <p className="text-gray-500">No matches available</p>}
+        {matches.length === 0 && <p className="text-gray-500">{t("noMatches")}</p>}
       </div>
     </div>
   );
