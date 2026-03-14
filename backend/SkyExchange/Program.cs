@@ -8,23 +8,25 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Register PostgreSQL database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Register SignalR for real-time WebSocket communication
 builder.Services.AddSignalR();
-
-// Register the background odds engine
 builder.Services.AddHostedService<OddsEngine>();
 
-// Allow frontend to call our API and connect to SignalR
+// Read allowed frontend origin from env or default to localhost
+var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
+
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(frontendUrl)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()));
+
+// Railway sets PORT env variable
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
@@ -36,8 +38,6 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
-
-// Map the SignalR hub endpoint
 app.MapHub<OddsHub>("/hubs/odds");
 
 app.Run();

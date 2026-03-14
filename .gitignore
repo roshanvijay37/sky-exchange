@@ -6,6 +6,9 @@ backend/SkyExchange/obj/
 frontend/sky-exchange/node_modules/
 frontend/sky-exchange/.next/
 
+# Env
+frontend/sky-exchange/.env.local
+
 # IDE
 .vs/
 .vscode/
