@@ -5,6 +5,13 @@ import Link from "next/link";
 import { fetchApi } from "./lib/api";
 import { Match } from "./lib/types";
 
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+    + " · "
+    + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function Home() {
   const [matches, setMatches] = useState<Match[]>([]);
 
@@ -23,7 +30,11 @@ export default function Home() {
             className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center hover:border-yellow-500 transition"
           >
             <div>
-              <span className="text-xs text-gray-400 uppercase">{m.sport}</span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-yellow-500 font-semibold uppercase">{m.sport}</span>
+                <span className="text-xs text-gray-600">•</span>
+                <span className="text-xs text-gray-400">{formatDate(m.startTime)}</span>
+              </div>
               <p className="text-lg font-semibold">
                 {m.teamA} <span className="text-gray-500">vs</span> {m.teamB}
               </p>
@@ -32,6 +43,8 @@ export default function Home() {
               className={`text-xs font-bold px-2 py-1 rounded ${
                 m.status === "live"
                   ? "bg-green-600 text-white"
+                  : m.status === "completed"
+                  ? "bg-gray-700 text-gray-400"
                   : "bg-gray-700 text-gray-300"
               }`}
             >
@@ -39,6 +52,7 @@ export default function Home() {
             </span>
           </Link>
         ))}
+        {matches.length === 0 && <p className="text-gray-500">No matches available</p>}
       </div>
     </div>
   );
