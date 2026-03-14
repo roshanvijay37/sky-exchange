@@ -2,11 +2,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SkyExchange.Data;
+using SkyExchange.Models;
+using System.Security.Cryptography;
 
 namespace SkyExchange.Controllers;
 
 public record SettleRequest(string WinningOutcome);
 public record AdjustBalanceRequest(decimal Amount, string Reason);
+public record CreateUserRequest(string Username, string Password, decimal Balance);
 
 [ApiController]
 [Route("api/admin")]
@@ -98,6 +101,30 @@ public class AdminController(AppDbContext db) : ControllerBase
             .OrderBy(u => u.Id)
             .ToListAsync();
         return Ok(users);
+    }
+
+    [HttpPost("users/create")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest req)
+    {
+        if (req.Username.Length < 3 || req.Password.Length < 4)
+            return BadRequest("Username min 3 chars, password min 4 chars");
+        if (await db.Users.AnyAsync(u => u.Username == req.Username))
+            return BadRequest("Username already taken");
+
+        var salt = RandomNumberGenerator.GetBytes(16);
+        var hash = Rfc2898DeriveBytes.Pbkdf2(req.Password, salt, 100000, HashAlgorithmName.SHA256, 32);
+        var passwordHash = $"{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
+
+        var user = new User
+        {
+            Username = req.Username,
+            PasswordHash = passwordHash,
+            Balance = req.Balance > 0 ? req.Balance : 10000m,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return Ok(new { user.Id, user.Username, user.Balance });
     }
 
     [HttpPost("users/{userId}/adjust")]

@@ -64,6 +64,10 @@ export default function AdminPage() {
   const [adjustId, setAdjustId] = useState<number | null>(null);
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newBalance, setNewBalance] = useState("10000");
+  const [createMsg, setCreateMsg] = useState("");
 
   const loadAll = () => {
     fetchApi<Dashboard>("/admin/dashboard").then(setDashboard);
@@ -136,6 +140,24 @@ export default function AdminPage() {
     setAdjustAmount("");
     setAdjustReason("");
     loadAll();
+  };
+
+  const createUser = async () => {
+    if (!newUsername || !newPassword) return;
+    setCreateMsg("");
+    try {
+      const result = await fetchApi<{ id: number; username: string; balance: number }>("/admin/users/create", {
+        method: "POST",
+        body: JSON.stringify({ username: newUsername, password: newPassword, balance: Number(newBalance) }),
+      });
+      setCreateMsg(`✅ Created "${result.username}" with ₹${result.balance.toFixed(2)}`);
+      setNewUsername("");
+      setNewPassword("");
+      setNewBalance("10000");
+      loadAll();
+    } catch (e: unknown) {
+      setCreateMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
+    }
   };
 
   const activeMatches = matches.filter((m) => m.status !== "completed");
@@ -357,7 +379,40 @@ export default function AdminPage() {
 
       {/* Users Tab */}
       {tab === "users" && (
-        <div className="overflow-x-auto">
+        <div>
+          {/* Create User Form */}
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4">
+            <h3 className="font-bold text-sm mb-3">➕ Create New User</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <input
+                type="text"
+                placeholder="Username"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+              />
+              <input
+                type="text"
+                placeholder="Password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+              />
+              <input
+                type="number"
+                placeholder="Balance (₹)"
+                value={newBalance}
+                onChange={(e) => setNewBalance(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+              />
+              <button onClick={createUser} className="bg-yellow-500 text-black text-sm font-bold px-4 py-2 rounded hover:bg-yellow-400">
+                Create User
+              </button>
+            </div>
+            {createMsg && <p className="text-sm mt-2">{createMsg}</p>}
+          </div>
+
+          <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="text-gray-400 text-left border-b border-gray-800">
@@ -438,6 +493,7 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+        </div>
         </div>
       )}
     </div>

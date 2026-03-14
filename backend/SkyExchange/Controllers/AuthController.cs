@@ -23,23 +23,7 @@ public class AuthController(AppDbContext db, IConfiguration config) : Controller
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
-        if (req.Username.Length < 3 || req.Password.Length < 4)
-            return BadRequest("Username min 3 chars, password min 4 chars");
-
-        if (await db.Users.AnyAsync(u => u.Username == req.Username))
-            return BadRequest("Username already taken");
-
-        var user = new User
-        {
-            Username = req.Username,
-            PasswordHash = HashPassword(req.Password),
-            Balance = 10000m,
-            CreatedAt = DateTime.UtcNow
-        };
-        db.Users.Add(user);
-        await db.SaveChangesAsync();
-
-        return Ok(new { Token = GenerateToken(user), user.Id, user.Username, user.Balance, user.IsAdmin });
+        return BadRequest("Registration is disabled. Contact admin for an account.");
     }
 
     [HttpPost("login")]
