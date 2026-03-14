@@ -210,8 +210,6 @@ export default function MatchPage() {
     }
   };
 
-  if (!match) return <p className="text-gray-400">{t("loading")}</p>;
-
   // Default to first unlocked tab
   useEffect(() => {
     if (!match || tabInitialized) return;
@@ -220,6 +218,8 @@ export default function MatchPage() {
     else if (!match.isLocked && !match.isLockedPredict) { setGameTab("predict"); }
     setTabInitialized(true);
   }, [match, tabInitialized]);
+
+  if (!match) return <p className="text-gray-400">{t("loading")}</p>;
 
   const isSuspended = markets.some(m => m.status === "suspended");
   const isLocked = match.isLocked;
