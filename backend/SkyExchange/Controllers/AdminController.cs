@@ -188,6 +188,80 @@ public class AdminController(AppDbContext db) : ControllerBase
         return Ok(new { matchId, MarketStatus = newStatus });
     }
 
+    public record SetOddsRequest(string Outcome, decimal BackPrice, decimal LayPrice);
+
+    [HttpPost("matches/{matchId}/set-odds")]
+    public async Task<IActionResult> SetOdds(int matchId, [FromBody] SetOddsRequest req)
+    {
+        if (req.BackPrice < 1.01m || req.LayPrice < 1.01m)
+            return BadRequest("Prices must be >= 1.01");
+        if (req.LayPrice <= req.BackPrice)
+            return BadRequest("Lay price must be greater than back price");
+
+        var odd = await db.Odds
+            .Include(o => o.Market)
+            .FirstOrDefaultAsync(o => o.Market.MatchId == matchId && o.Outcome == req.Outcome);
+        if (odd is null) return NotFound("Outcome not found for this match");
+
+        odd.BackPrice = req.BackPrice;
+        odd.LayPrice = req.LayPrice;
+        odd.LastUpdated = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        return Ok(new { matchId, req.Outcome, odd.BackPrice, odd.LayPrice });
+    }
+
+    [HttpPost("matches/{matchId}/void")]
+    public async Task<IActionResult> VoidMatch(int matchId)
+    {
+        var match = await db.Matches.FindAsync(matchId);
+        if (match is null) return NotFound("Match not found");
+        if (match.Status == "completed") return BadRequest("Cannot void a settled match");
+
+        var markets = await db.Markets
+            .Where(m => m.MatchId == matchId)
+            .Include(m => m.Odds)
+            .ToListAsync();
+
+        var oddIds = markets.SelectMany(m => m.Odds).Select(o => o.Id).ToList();
+        var refundCount = 0;
+
+        // Refund all matched trades
+        var trades = await db.Trades
+            .Where(t => oddIds.Contains(t.OddsId))
+            .Include(t => t.BackOrder).ThenInclude(o => o.User)
+            .Include(t => t.LayOrder).ThenInclude(o => o.User)
+            .ToListAsync();
+
+        foreach (var trade in trades)
+        {
+            trade.BackOrder.User.Balance += trade.Stake;
+            trade.LayOrder.User.Balance += trade.Stake * (trade.Price - 1);
+            trade.BackOrder.Status = "voided";
+            trade.LayOrder.Status = "voided";
+            refundCount++;
+        }
+
+        // Refund all pending orders
+        var pendingOrders = await db.Orders
+            .Where(o => oddIds.Contains(o.OddsId) && o.Status == "pending")
+            .Include(o => o.User)
+            .ToListAsync();
+
+        foreach (var order in pendingOrders)
+        {
+            var refund = order.Side == "back" ? order.Stake : order.Stake * (order.Price - 1);
+            order.User.Balance += refund;
+            order.Status = "voided";
+        }
+
+        match.Status = "voided";
+        foreach (var m in markets) m.Status = "closed";
+        await db.SaveChangesAsync();
+
+        return Ok(new { Message = $"Match voided. {refundCount} trade(s) refunded, {pendingOrders.Count} pending order(s) refunded." });
+    }
+
     [HttpGet("exposure")]
     public async Task<IActionResult> GetExposure()
     {

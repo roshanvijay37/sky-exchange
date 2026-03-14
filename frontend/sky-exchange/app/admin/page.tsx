@@ -82,6 +82,10 @@ export default function AdminPage() {
   const [newBalance, setNewBalance] = useState("10000");
   const [createMsg, setCreateMsg] = useState("");
   const [exposure, setExposure] = useState<MatchExposure[]>([]);
+  const [oddsOutcome, setOddsOutcome] = useState("");
+  const [oddsBack, setOddsBack] = useState("");
+  const [oddsLay, setOddsLay] = useState("");
+  const [oddsMsg, setOddsMsg] = useState("");
 
   const loadAll = () => {
     fetchApi<Dashboard>("/admin/dashboard").then(setDashboard);
@@ -399,6 +403,68 @@ export default function AdminPage() {
                 ))}
               </div>
               {message && <p className="mt-3 text-sm">{message}</p>}
+
+              {/* Set Odds */}
+              <div className="mt-4 border-t border-gray-800 pt-3">
+                <p className="text-sm text-gray-400 mb-2">📊 Override Odds:</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <select
+                    value={oddsOutcome}
+                    onChange={(e) => setOddsOutcome(e.target.value)}
+                    className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm"
+                  >
+                    <option value="">Outcome</option>
+                    {markets[0]?.odds.map((o) => (
+                      <option key={o.id} value={o.outcome}>{o.outcome}</option>
+                    ))}
+                  </select>
+                  <input type="number" step="0.01" placeholder="Back price" value={oddsBack} onChange={(e) => setOddsBack(e.target.value)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm" />
+                  <input type="number" step="0.01" placeholder="Lay price" value={oddsLay} onChange={(e) => setOddsLay(e.target.value)} className="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm" />
+                  <button
+                    onClick={async () => {
+                      if (!selectedMatch || !oddsOutcome || !oddsBack || !oddsLay) return;
+                      try {
+                        await fetchApi(`/admin/matches/${selectedMatch.id}/set-odds`, {
+                          method: "POST",
+                          body: JSON.stringify({ outcome: oddsOutcome, backPrice: Number(oddsBack), layPrice: Number(oddsLay) }),
+                        });
+                        setOddsMsg(`✅ ${oddsOutcome} odds updated`);
+                        setOddsOutcome(""); setOddsBack(""); setOddsLay("");
+                      } catch (e: unknown) {
+                        setOddsMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
+                      }
+                    }}
+                    className="bg-blue-700 hover:bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded"
+                  >
+                    Set Odds
+                  </button>
+                </div>
+                {oddsMsg && <p className="text-sm mt-2">{oddsMsg}</p>}
+                <div className="mt-2 text-xs text-gray-500">
+                  Current: {markets[0]?.odds.map((o) => `${o.outcome}: ${o.backPrice}/${o.layPrice}`).join(" | ")}
+                </div>
+              </div>
+
+              {/* Void Match */}
+              <div className="mt-4 border-t border-gray-800 pt-3">
+                <button
+                  onClick={async () => {
+                    if (!selectedMatch) return;
+                    if (!confirm(`⚠️ VOID all trades for "${selectedMatch.teamA} vs ${selectedMatch.teamB}"? This refunds everyone.`)) return;
+                    try {
+                      const res = await fetchApi<{ message: string }>(`/admin/matches/${selectedMatch.id}/void`, { method: "POST" });
+                      setMessage(`✅ ${res.message}`);
+                      setSelectedMatch(null); setMarkets([]);
+                      loadAll();
+                    } catch (e: unknown) {
+                      setMessage(`❌ ${e instanceof Error ? e.message : "Error"}`);
+                    }
+                  }}
+                  className="bg-red-800 hover:bg-red-700 text-white text-sm font-bold px-4 py-2 rounded"
+                >
+                  🚫 Void All Trades & Refund
+                </button>
+              </div>
             </div>
           )}
 
