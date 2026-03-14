@@ -8,6 +8,7 @@ public class User
 {
     [Key, Column("id")] public int Id { get; set; }
     [Column("username")] public string Username { get; set; } = "";
+    [Column("password_hash")] public string PasswordHash { get; set; } = "";
     [Column("balance")] public decimal Balance { get; set; }
     [Column("created_at")] public DateTime CreatedAt { get; set; }
 }

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -7,20 +9,22 @@ using SkyExchange.Models;
 
 namespace SkyExchange.Controllers;
 
-public record TradeRequest(int UserId, int OddsId, string Side, decimal Price, decimal Stake);
+public record TradeRequest(int OddsId, string Side, decimal Price, decimal Stake);
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : ControllerBase
 {
-    // POST /api/trade — place a new back or lay order
+    private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
     [HttpPost]
     public async Task<IActionResult> PlaceOrder([FromBody] TradeRequest req)
     {
         if (req.Side is not ("back" or "lay"))
             return BadRequest("Side must be 'back' or 'lay'");
 
-        var user = await db.Users.FindAsync(req.UserId);
+        var user = await db.Users.FindAsync(UserId);
         if (user is null) return NotFound("User not found");
 
         var liability = req.Side == "back" ? req.Stake : req.Stake * (req.Price - 1);
@@ -31,7 +35,7 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
 
         var order = new Order
         {
-            UserId = req.UserId,
+            UserId = UserId,
             OddsId = req.OddsId,
             Side = req.Side,
             Price = req.Price,
@@ -43,26 +47,22 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
         await db.SaveChangesAsync();
 
         await TryMatch(order);
-
-        // Shift odds based on trade pressure and broadcast
         await ShiftAndBroadcast(req.OddsId, req.Side);
 
         return Ok(new { order.Id, order.Status, user.Balance });
     }
 
-    // DELETE /api/trade/1?userId=1 — cancel a pending order
     [HttpDelete("{orderId}")]
-    public async Task<IActionResult> CancelOrder(int orderId, [FromQuery] int userId)
+    public async Task<IActionResult> CancelOrder(int orderId)
     {
         var order = await db.Orders.FindAsync(orderId);
         if (order is null) return NotFound("Order not found");
-        if (order.UserId != userId) return BadRequest("Not your order");
+        if (order.UserId != UserId) return BadRequest("Not your order");
         if (order.Status != "pending") return BadRequest("Only pending orders can be cancelled");
 
-        var user = await db.Users.FindAsync(userId);
+        var user = await db.Users.FindAsync(UserId);
         if (user is null) return NotFound("User not found");
 
-        // Refund liability
         var refund = order.Side == "back" ? order.Stake : order.Stake * (order.Price - 1);
         user.Balance += refund;
         order.Status = "cancelled";
@@ -76,14 +76,12 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
         var odd = await db.Odds.Include(o => o.Market).FirstOrDefaultAsync(o => o.Id == oddsId);
         if (odd is null) return;
 
-        // Back pressure pushes price down, lay pressure pushes price up
         var shift = side == "back" ? -0.02m : 0.02m;
         odd.BackPrice = Math.Max(1.01m, odd.BackPrice + shift);
         odd.LayPrice = odd.BackPrice + 0.05m;
         odd.LastUpdated = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
-        // Broadcast the updated odds to clients watching this match
         await hub.Clients.Group($"match-{odd.Market.MatchId}")
             .SendAsync("OddsUpdated", new
             {

@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import { getConnection } from "../../lib/signalr";
+import { useAuth } from "../../lib/auth";
 import { Match, Market, Odd, OrderBookEntry } from "../../lib/types";
 
 export default function MatchPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const router = useRouter();
   const [match, setMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [selectedOdd, setSelectedOdd] = useState<Odd | null>(null);
@@ -73,9 +76,10 @@ export default function MatchPage() {
     setMessage("");
     try {
       const price = side === "back" ? selectedOdd.backPrice : selectedOdd.layPrice;
+      if (!user) { router.push("/login"); return; }
       const result = await fetchApi<{ id: number; status: string; balance: number }>("/trade", {
         method: "POST",
-        body: JSON.stringify({ userId: 1, oddsId: selectedOdd.id, side, price, stake: Number(stake) }),
+        body: JSON.stringify({ oddsId: selectedOdd.id, side, price, stake: Number(stake) }),
       });
       setMessage(`✅ Order #${result.id} placed (${result.status}). Balance: $${result.balance.toFixed(2)}`);
       setStake("");
