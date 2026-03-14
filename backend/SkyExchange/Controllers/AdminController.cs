@@ -117,4 +117,75 @@ public class AdminController(AppDbContext db) : ControllerBase
         await db.SaveChangesAsync();
         return Ok(new { user.Id, user.IsSuspended });
     }
+
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> GetDashboard()
+    {
+        var today = DateTime.UtcNow.Date;
+
+        var totalUsers = await db.Users.CountAsync();
+        var activeUsers = await db.Orders
+            .Where(o => o.CreatedAt >= today.AddDays(-7))
+            .Select(o => o.UserId).Distinct().CountAsync();
+
+        var totalOrders = await db.Orders.CountAsync();
+        var todayOrders = await db.Orders.CountAsync(o => o.CreatedAt >= today);
+        var pendingOrders = await db.Orders.CountAsync(o => o.Status == "pending");
+
+        var totalTrades = await db.Trades.CountAsync();
+        var todayTrades = await db.Trades.CountAsync(t => t.CreatedAt >= today);
+        var totalVolume = await db.Trades.SumAsync(t => t.Stake);
+        var todayVolume = await db.Trades.Where(t => t.CreatedAt >= today).SumAsync(t => t.Stake);
+
+        var totalBalances = await db.Users.SumAsync(u => u.Balance);
+        var initialBalance = await db.Users.CountAsync() * 10000m;
+        var platformPnl = initialBalance - totalBalances;
+
+        var matchStats = await db.Matches
+            .Where(m => m.Status != "completed")
+            .Select(m => new
+            {
+                m.Id,
+                Match = m.TeamA + " vs " + m.TeamB,
+                m.Status,
+                Orders = db.Orders.Count(o => o.Odd.Market.MatchId == m.Id && o.Status == "pending"),
+                Trades = db.Trades.Count(t => t.Odd.Market.MatchId == m.Id),
+                Volume = db.Trades.Where(t => t.Odd.Market.MatchId == m.Id).Sum(t => t.Stake)
+            })
+            .OrderByDescending(m => m.Orders)
+            .ToListAsync();
+
+        var topTraders = await db.Users
+            .Where(u => !u.IsAdmin)
+            .Select(u => new
+            {
+                u.Username,
+                u.Balance,
+                Trades = db.Trades.Count(t => t.BackOrder.UserId == u.Id || t.LayOrder.UserId == u.Id),
+                Volume = db.Trades
+                    .Where(t => t.BackOrder.UserId == u.Id || t.LayOrder.UserId == u.Id)
+                    .Sum(t => t.Stake)
+            })
+            .Where(u => u.Trades > 0)
+            .OrderByDescending(u => u.Volume)
+            .Take(10)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            TotalUsers = totalUsers,
+            ActiveUsers = activeUsers,
+            TotalOrders = totalOrders,
+            TodayOrders = todayOrders,
+            PendingOrders = pendingOrders,
+            TotalTrades = totalTrades,
+            TodayTrades = todayTrades,
+            TotalVolume = totalVolume,
+            TodayVolume = todayVolume,
+            TotalBalances = totalBalances,
+            PlatformPnl = platformPnl,
+            MatchStats = matchStats,
+            TopTraders = topTraders
+        });
+    }
 }

@@ -17,10 +17,43 @@ interface AdminUser {
   tradeCount: number;
 }
 
+interface MatchStat {
+  id: number;
+  match: string;
+  status: string;
+  orders: number;
+  trades: number;
+  volume: number;
+}
+
+interface TopTrader {
+  username: string;
+  balance: number;
+  trades: number;
+  volume: number;
+}
+
+interface Dashboard {
+  totalUsers: number;
+  activeUsers: number;
+  totalOrders: number;
+  todayOrders: number;
+  pendingOrders: number;
+  totalTrades: number;
+  todayTrades: number;
+  totalVolume: number;
+  todayVolume: number;
+  totalBalances: number;
+  platformPnl: number;
+  matchStats: MatchStat[];
+  topTraders: TopTrader[];
+}
+
 export default function AdminPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<"matches" | "users">("matches");
+  const [tab, setTab] = useState<"dashboard" | "matches" | "users">("dashboard");
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [markets, setMarkets] = useState<Market[]>([]);
@@ -30,10 +63,15 @@ export default function AdminPage() {
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
 
-  useEffect(() => {
-    if (!user?.isAdmin) { router.push("/"); return; }
+  const loadAll = () => {
+    fetchApi<Dashboard>("/admin/dashboard").then(setDashboard);
     fetchApi<Match[]>("/matches").then(setMatches);
     fetchApi<AdminUser[]>("/admin/users").then(setUsers);
+  };
+
+  useEffect(() => {
+    if (!user?.isAdmin) { router.push("/"); return; }
+    loadAll();
   }, [user, router]);
 
   // Match settlement
@@ -53,10 +91,9 @@ export default function AdminPage() {
         { method: "POST", body: JSON.stringify({ winningOutcome: outcome }) }
       );
       setMessage(`✅ ${result.message} — ${result.payouts.length} payout(s) processed`);
-      fetchApi<Match[]>("/matches").then(setMatches);
-      fetchApi<AdminUser[]>("/admin/users").then(setUsers);
       setSelectedMatch(null);
       setMarkets([]);
+      loadAll();
     } catch (e: unknown) {
       setMessage(`❌ ${e instanceof Error ? e.message : "Error"}`);
     }
@@ -67,7 +104,7 @@ export default function AdminPage() {
     const u = users.find(u => u.id === userId);
     if (!confirm(`${u?.isSuspended ? "Unsuspend" : "Suspend"} user "${u?.username}"?`)) return;
     await fetchApi(`/admin/users/${userId}/suspend`, { method: "POST" });
-    fetchApi<AdminUser[]>("/admin/users").then(setUsers);
+    loadAll();
   };
 
   const submitAdjust = async () => {
@@ -79,7 +116,7 @@ export default function AdminPage() {
     setAdjustId(null);
     setAdjustAmount("");
     setAdjustReason("");
-    fetchApi<AdminUser[]>("/admin/users").then(setUsers);
+    loadAll();
   };
 
   const activeMatches = matches.filter((m) => m.status !== "completed");
@@ -91,19 +128,119 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4">
-        <button
-          onClick={() => setTab("matches")}
-          className={`px-4 py-2 rounded-t text-sm font-bold ${tab === "matches" ? "bg-gray-900 text-white" : "bg-gray-800 text-gray-500"}`}
-        >
-          Matches
-        </button>
-        <button
-          onClick={() => setTab("users")}
-          className={`px-4 py-2 rounded-t text-sm font-bold ${tab === "users" ? "bg-gray-900 text-white" : "bg-gray-800 text-gray-500"}`}
-        >
-          Users ({users.length})
-        </button>
+        {(["dashboard", "matches", "users"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-t text-sm font-bold capitalize ${tab === t ? "bg-gray-900 text-white" : "bg-gray-800 text-gray-500"}`}
+          >
+            {t === "users" ? `Users (${users.length})` : t}
+          </button>
+        ))}
       </div>
+
+      {/* Dashboard Tab */}
+      {tab === "dashboard" && dashboard && (
+        <div>
+          {/* Stat Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <StatCard label="Total Users" value={dashboard.totalUsers} />
+            <StatCard label="Active (7d)" value={dashboard.activeUsers} />
+            <StatCard label="Pending Orders" value={dashboard.pendingOrders} />
+            <StatCard label="Total Trades" value={dashboard.totalTrades} />
+            <StatCard label="Today Orders" value={dashboard.todayOrders} />
+            <StatCard label="Today Trades" value={dashboard.todayTrades} />
+            <StatCard label="Total Volume" value={`$${dashboard.totalVolume.toFixed(2)}`} />
+            <StatCard label="Today Volume" value={`$${dashboard.todayVolume.toFixed(2)}`} />
+          </div>
+
+          {/* Platform P&L */}
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
+            <h3 className="text-sm text-gray-400 mb-2">Platform Overview</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Total User Balances</p>
+                <p className="text-lg font-bold text-yellow-400">${dashboard.totalBalances.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Platform P&L</p>
+                <p className={`text-lg font-bold ${dashboard.platformPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {dashboard.platformPnl >= 0 ? "+" : ""}${dashboard.platformPnl.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Total Orders</p>
+                <p className="text-lg font-bold text-white">{dashboard.totalOrders}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Match Stats */}
+          {dashboard.matchStats.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm text-gray-400 mb-2">Active Matches</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[500px]">
+                  <thead>
+                    <tr className="text-gray-400 text-left border-b border-gray-800">
+                      <th className="py-2">Match</th>
+                      <th>Status</th>
+                      <th>Pending</th>
+                      <th>Trades</th>
+                      <th>Volume</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.matchStats.map((m) => (
+                      <tr key={m.id} className="border-b border-gray-800/50">
+                        <td className="py-2">{m.match}</td>
+                        <td>
+                          <span className={`text-xs px-2 py-0.5 rounded ${m.status === "live" ? "bg-green-600" : "bg-gray-700"}`}>
+                            {m.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td>{m.orders}</td>
+                        <td>{m.trades}</td>
+                        <td className="text-yellow-400">${m.volume.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Top Traders */}
+          {dashboard.topTraders.length > 0 && (
+            <div>
+              <h3 className="text-sm text-gray-400 mb-2">Top Traders (by volume)</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[400px]">
+                  <thead>
+                    <tr className="text-gray-400 text-left border-b border-gray-800">
+                      <th className="py-2">User</th>
+                      <th>Balance</th>
+                      <th>Trades</th>
+                      <th>Volume</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.topTraders.map((t, i) => (
+                      <tr key={i} className="border-b border-gray-800/50">
+                        <td className="py-2">{t.username}</td>
+                        <td className="text-yellow-400">${t.balance.toFixed(2)}</td>
+                        <td>{t.trades}</td>
+                        <td>${t.volume.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {tab === "dashboard" && !dashboard && <p className="text-gray-500">Loading...</p>}
 
       {/* Matches Tab */}
       {tab === "matches" && (
@@ -224,7 +361,6 @@ export default function AdminPage() {
             </tbody>
           </table>
 
-          {/* Adjust Balance Panel */}
           {adjustId && (
             <div className="mt-4 bg-gray-900 border border-gray-800 rounded-lg p-4 max-w-sm">
               <h3 className="font-bold text-sm mb-2">
@@ -252,6 +388,15 @@ export default function AdminPage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-lg font-bold text-white">{value}</p>
     </div>
   );
 }
