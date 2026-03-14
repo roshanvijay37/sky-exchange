@@ -12,6 +12,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Trade> Trades => Set<Trade>();
     public DbSet<DigitBet> DigitBets => Set<DigitBet>();
+    public DbSet<ScoreContest> ScoreContests => Set<ScoreContest>();
+    public DbSet<ScorePrediction> ScorePredictions => Set<ScorePrediction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +42,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId);
             e.HasOne(d => d.Match).WithMany().HasForeignKey(d => d.MatchId);
+        });
+
+        modelBuilder.Entity<ScoreContest>(e =>
+        {
+            e.HasOne(c => c.Match).WithMany().HasForeignKey(c => c.MatchId);
+            e.HasMany(c => c.Predictions).WithOne(p => p.Contest).HasForeignKey(p => p.ContestId);
+        });
+
+        modelBuilder.Entity<ScorePrediction>(e =>
+        {
+            e.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId);
         });
     }
 }

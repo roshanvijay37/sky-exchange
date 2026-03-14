@@ -21,6 +21,30 @@ interface DigitBetRecord {
   payout: number;
 }
 
+interface ContestPrediction {
+  id: number;
+  username: string;
+  predictedScoreA: number;
+  predictedScoreB: number;
+  difference: number | null;
+  rank: number | null;
+  payout: number;
+}
+
+interface Contest {
+  id: number;
+  matchId: number;
+  teamA: string;
+  teamB: string;
+  entryFee: number;
+  maxPlayers: number;
+  status: string;
+  filled: number;
+  actualScoreA: number | null;
+  actualScoreB: number | null;
+  predictions: ContestPrediction[];
+}
+
 function getUserPrice(odd: Odd) {
   const wBack = odd.backPrice * (1 - MARGIN);
   const wLay = odd.layPrice * (1 + MARGIN);
@@ -51,6 +75,16 @@ export default function MatchPage() {
   const [digitMsg, setDigitMsg] = useState("");
   const [digitBets, setDigitBets] = useState<DigitBetRecord[]>([]);
 
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [predScoreA, setPredScoreA] = useState("");
+  const [predScoreB, setPredScoreB] = useState("");
+  const [contestMsg, setContestMsg] = useState("");
+
+  const loadContests = useCallback(async () => {
+    const data = await fetchApi<Contest[]>(`/contest/match/${id}`);
+    setContests(data);
+  }, [id]);
+
   const loadDigitBets = useCallback(async () => {
     if (!user) return;
     const data = await fetchApi<DigitBetRecord[]>(`/digit-bet/match/${id}`);
@@ -66,7 +100,8 @@ export default function MatchPage() {
     fetchApi<Match>(`/matches/${id}`).then(setMatch);
     fetchApi<Market[]>(`/markets/match/${id}`).then(setMarkets);
     loadDigitBets();
-  }, [id, loadDigitBets]);
+    loadContests();
+  }, [id, loadDigitBets, loadContests]);
 
   useEffect(() => {
     const conn = getConnection();
@@ -407,6 +442,137 @@ export default function MatchPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+      {/* Score Prediction Contest */}
+      {match.status !== "completed" && contests.filter(c => c.status === "open" || c.status === "full").length > 0 && (
+        <div className="max-w-md mx-auto mt-8">
+          {contests.filter(c => c.status !== "cancelled").map((contest) => (
+            <div key={contest.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
+              <h3 className="font-bold text-lg mb-1">🏆 {t("predictScore") || "Predict the Score"}</h3>
+              <p className="text-xs text-gray-400 mb-3">
+                {t("contestDesc") || "Predict the final score. Closest wins!"}
+                {" "}• {t("entry") || "Entry"}: ₹{contest.entryFee} • 🥇₹500 🥈₹300
+              </p>
+
+              {/* Slots */}
+              <div className="bg-gray-800 rounded-lg p-3 mb-3">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-400">{contest.filled}/{contest.maxPlayers} {t("joined") || "joined"}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                    contest.status === "open" ? "bg-green-900 text-green-300" :
+                    contest.status === "full" ? "bg-yellow-900 text-yellow-300" :
+                    contest.status === "settled" ? "bg-blue-900 text-blue-300" : "bg-gray-700"
+                  }`}>
+                    {contest.status === "open" ? `${contest.maxPlayers - contest.filled} ${t("spotsLeft") || "spots left"}` :
+                     contest.status === "full" ? t("contestFull") || "Full — waiting for result" :
+                     contest.status === "settled" ? t("contestSettled") || "Settled" : contest.status}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div className="bg-yellow-500 h-2 rounded-full transition-all" style={{ width: `${(contest.filled / contest.maxPlayers) * 100}%` }} />
+                </div>
+              </div>
+
+              {/* Entry form */}
+              {contest.status === "open" && !contest.predictions.some(p => p.username === user?.username) && (
+                <div>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <label className="text-xs text-gray-400">{contest.teamA}</label>
+                      <input type="number" min={0} placeholder="Score" value={predScoreA} onChange={(e) => setPredScoreA(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400">{contest.teamB}</label>
+                      <input type="number" min={0} placeholder="Score" value={predScoreB} onChange={(e) => setPredScoreB(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!user) { router.push("/login"); return; }
+                      if (predScoreA === "" || predScoreB === "") return;
+                      if (!confirm(`Pay ₹${contest.entryFee} and predict ${contest.teamA} ${predScoreA} - ${contest.teamB} ${predScoreB}?`)) return;
+                      try {
+                        await fetchApi(`/contest/${contest.id}/enter`, {
+                          method: "POST",
+                          body: JSON.stringify({ predictedScoreA: Number(predScoreA), predictedScoreB: Number(predScoreB) }),
+                        });
+                        setContestMsg("🟢 " + (t("contestEntered") || "You're in! Good luck!"));
+                        setPredScoreA(""); setPredScoreB("");
+                        refreshBalance();
+                        loadContests();
+                      } catch (e: unknown) {
+                        setContestMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
+                      }
+                    }}
+                    disabled={predScoreA === "" || predScoreB === ""}
+                    className="w-full bg-yellow-500 text-black font-bold py-2.5 rounded-lg hover:bg-yellow-400 text-sm disabled:opacity-50"
+                  >
+                    {t("joinContest") || "Join Contest"} — ₹{contest.entryFee}
+                  </button>
+                  {contestMsg && (
+                    <p className={`mt-2 text-sm font-semibold rounded-lg px-3 py-2 ${
+                      contestMsg.startsWith("🟢") ? "bg-green-900/50 border border-green-700 text-green-300" : "bg-red-900/50 border border-red-700 text-red-300"
+                    }`}>{contestMsg}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Already entered */}
+              {contest.status === "open" && contest.predictions.some(p => p.username === user?.username) && (
+                <p className="text-sm text-green-400">✅ {t("alreadyEntered") || "You've entered this contest!"}</p>
+              )}
+
+              {/* Leaderboard */}
+              {contest.predictions.length > 0 && (
+                <div className="mt-3 border-t border-gray-800 pt-3">
+                  <p className="text-xs text-gray-400 mb-2">{contest.status === "settled" ? "🏆 " + (t("results") || "Results") : t("participants") || "Participants"}</p>
+                  {contest.predictions.map((p, i) => (
+                    <div key={p.id} className={`flex justify-between text-sm py-1.5 border-b border-gray-800/50 ${
+                      p.username === user?.username ? "bg-gray-800/50 rounded px-2" : ""
+                    }`}>
+                      <span>
+                        {contest.status === "settled" && p.rank === 1 && "🥇 "}
+                        {contest.status === "settled" && p.rank === 2 && "🥈 "}
+                        {p.username} — {p.predictedScoreA}-{p.predictedScoreB}
+                        {contest.status === "settled" && <span className="text-gray-500 ml-1">(off by {p.difference})</span>}
+                      </span>
+                      {p.payout > 0 && <span className="text-green-400 font-bold">+₹{p.payout}</span>}
+                    </div>
+                  ))}
+                  {contest.status === "settled" && contest.actualScoreA !== null && (
+                    <p className="text-xs text-gray-500 mt-2">Actual: {contest.teamA} {contest.actualScoreA} - {contest.teamB} {contest.actualScoreB}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Settled contests */}
+      {contests.filter(c => c.status === "settled").length > 0 && match.status === "completed" && (
+        <div className="max-w-md mx-auto mt-8">
+          {contests.filter(c => c.status === "settled").map((contest) => (
+            <div key={contest.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
+              <h3 className="font-bold text-lg mb-1">🏆 {t("predictScore") || "Predict the Score"} — {t("contestSettled") || "Settled"}</h3>
+              <div className="mt-2">
+                {contest.predictions.map((p) => (
+                  <div key={p.id} className="flex justify-between text-sm py-1.5 border-b border-gray-800/50">
+                    <span>
+                      {p.rank === 1 && "🥇 "}{p.rank === 2 && "🥈 "}
+                      {p.username} — {p.predictedScoreA}-{p.predictedScoreB}
+                      <span className="text-gray-500 ml-1">(off by {p.difference})</span>
+                    </span>
+                    {p.payout > 0 && <span className="text-green-400 font-bold">+₹{p.payout}</span>}
+                  </div>
+                ))}
+                <p className="text-xs text-gray-500 mt-2">Actual: {contest.teamA} {contest.actualScoreA} - {contest.teamB} {contest.actualScoreB}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

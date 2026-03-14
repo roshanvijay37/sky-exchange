@@ -103,3 +103,34 @@ public class DigitBet
     public User User { get; set; } = null!;
     public Match Match { get; set; } = null!;
 }
+
+[Table("score_contests")]
+public class ScoreContest
+{
+    [Key, Column("id")] public int Id { get; set; }
+    [Column("match_id")] public int MatchId { get; set; }
+    [Column("entry_fee")] public decimal EntryFee { get; set; } = 100m;
+    [Column("max_players")] public int MaxPlayers { get; set; } = 10;
+    [Column("status")] public string Status { get; set; } = "open";
+    [Column("actual_score_a")] public int? ActualScoreA { get; set; }
+    [Column("actual_score_b")] public int? ActualScoreB { get; set; }
+    [Column("created_at")] public DateTime CreatedAt { get; set; }
+    public Match Match { get; set; } = null!;
+    public List<ScorePrediction> Predictions { get; set; } = [];
+}
+
+[Table("score_predictions")]
+public class ScorePrediction
+{
+    [Key, Column("id")] public int Id { get; set; }
+    [Column("contest_id")] public int ContestId { get; set; }
+    [Column("user_id")] public int UserId { get; set; }
+    [Column("predicted_score_a")] public int PredictedScoreA { get; set; }
+    [Column("predicted_score_b")] public int PredictedScoreB { get; set; }
+    [Column("difference")] public int? Difference { get; set; }
+    [Column("rank")] public int? Rank { get; set; }
+    [Column("payout")] public decimal Payout { get; set; }
+    [Column("created_at")] public DateTime CreatedAt { get; set; }
+    public ScoreContest Contest { get; set; } = null!;
+    public User User { get; set; } = null!;
+}

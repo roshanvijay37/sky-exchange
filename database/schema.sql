@@ -89,3 +89,30 @@ CREATE TABLE digit_bets (
 
 CREATE INDEX idx_digit_bets_match ON digit_bets(match_id);
 CREATE INDEX idx_digit_bets_user ON digit_bets(user_id);
+
+-- Score Prediction Contests
+CREATE TABLE score_contests (
+    id SERIAL PRIMARY KEY,
+    match_id INT NOT NULL REFERENCES matches(id),
+    entry_fee DECIMAL(12,2) NOT NULL DEFAULT 100,
+    max_players INT NOT NULL DEFAULT 10,
+    status VARCHAR(20) NOT NULL DEFAULT 'open',  -- open, full, settled, cancelled
+    actual_score_a INT,
+    actual_score_b INT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE score_predictions (
+    id SERIAL PRIMARY KEY,
+    contest_id INT NOT NULL REFERENCES score_contests(id),
+    user_id INT NOT NULL REFERENCES users(id),
+    predicted_score_a INT NOT NULL,
+    predicted_score_b INT NOT NULL,
+    difference INT,                       -- calculated on settlement
+    rank INT,                             -- calculated on settlement
+    payout DECIMAL(12,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_score_predictions_contest ON score_predictions(contest_id);
+CREATE INDEX idx_score_predictions_user ON score_predictions(user_id);

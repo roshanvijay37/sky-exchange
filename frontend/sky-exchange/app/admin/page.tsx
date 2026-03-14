@@ -92,6 +92,9 @@ export default function AdminPage() {
   const [scoreA, setScoreA] = useState("");
   const [scoreB, setScoreB] = useState("");
   const [digitMsg, setDigitMsg] = useState("");
+  const [contestScoreA, setContestScoreA] = useState("");
+  const [contestScoreB, setContestScoreB] = useState("");
+  const [contestMsg, setContestMsg] = useState("");
   const [exposure, setExposure] = useState<MatchExposure[]>([]);
   const [oddsMsg, setOddsMsg] = useState("");
 
@@ -525,6 +528,33 @@ export default function AdminPage() {
                 {oddsMsg && <p className="text-sm mt-2">{oddsMsg}</p>}
               </div>
 
+              {/* Create Contest */}
+              <div className="mt-4 border-t border-gray-800 pt-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-400">🏆 Score Prediction Contest</p>
+                  <button
+                    onClick={async () => {
+                      if (!selectedMatch) return;
+                      if (!confirm(`Create a ₹100 entry contest (10 players) for this match?`)) return;
+                      try {
+                        await fetchApi("/admin/contest/create", {
+                          method: "POST",
+                          body: JSON.stringify({ matchId: selectedMatch.id }),
+                        });
+                        setContestMsg("✅ Contest created!");
+                      } catch (e: unknown) {
+                        setContestMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
+                      }
+                    }}
+                    className="bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded"
+                  >+ Create Contest</button>
+                </div>
+                {contestMsg && <p className="text-sm mt-2">{contestMsg}</p>}
+              </div>
+
+              {/* Settle/Cancel Contest */}
+              <ContestAdmin matchId={selectedMatch.id} />
+
               {/* Settle Digits */}
               <div className="mt-4 border-t border-gray-800 pt-3">
                 <p className="text-sm text-gray-400 mb-2">🎯 Settle Digit Bets (enter final score):</p>
@@ -720,6 +750,71 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-3">
       <p className="text-xs text-gray-500">{label}</p>
       <p className="text-lg font-bold text-white">{value}</p>
+    </div>
+  );
+}
+
+function ContestAdmin({ matchId }: { matchId: number }) {
+  const [contests, setContests] = useState<{ id: number; status: string; filled: number; maxPlayers: number }[]>([]);
+  const [scoreA, setScoreA] = useState("");
+  const [scoreB, setScoreB] = useState("");
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    fetchApi<{ id: number; status: string; filled: number; maxPlayers: number }[]>(`/contest/match/${matchId}`).then(setContests);
+  }, [matchId, msg]);
+
+  const active = contests.filter(c => c.status !== "cancelled" && c.status !== "settled");
+  if (active.length === 0) return null;
+
+  return (
+    <div className="mt-3 border-t border-gray-800 pt-3">
+      {active.map((c) => (
+        <div key={c.id} className="bg-gray-800 rounded-lg p-3 mb-2">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm">Contest #{c.id} — {c.filled}/{c.maxPlayers} players</span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded ${c.status === "full" ? "bg-yellow-900 text-yellow-300" : "bg-green-900 text-green-300"}`}>
+              {c.status.toUpperCase()}
+            </span>
+          </div>
+          {c.status === "full" && (
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <input type="number" min={0} placeholder="Team A score" value={scoreA} onChange={(e) => setScoreA(e.target.value)} className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm" />
+              <input type="number" min={0} placeholder="Team B score" value={scoreB} onChange={(e) => setScoreB(e.target.value)} className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm" />
+              <button
+                onClick={async () => {
+                  if (scoreA === "" || scoreB === "") return;
+                  if (!confirm(`Settle contest with score ${scoreA}-${scoreB}?`)) return;
+                  try {
+                    const res = await fetchApi<{ message: string }>(`/admin/contest/${c.id}/settle`, {
+                      method: "POST",
+                      body: JSON.stringify({ actualScoreA: Number(scoreA), actualScoreB: Number(scoreB) }),
+                    });
+                    setMsg(`✅ ${res.message}`);
+                    setScoreA(""); setScoreB("");
+                  } catch (e: unknown) {
+                    setMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
+                  }
+                }}
+                className="bg-green-700 hover:bg-green-600 text-white text-xs font-bold rounded"
+              >Settle</button>
+            </div>
+          )}
+          <button
+            onClick={async () => {
+              if (!confirm("Cancel this contest and refund all players?")) return;
+              try {
+                const res = await fetchApi<{ message: string }>(`/admin/contest/${c.id}/cancel`, { method: "POST" });
+                setMsg(`✅ ${res.message}`);
+              } catch (e: unknown) {
+                setMsg(`❌ ${e instanceof Error ? e.message : "Error"}`);
+              }
+            }}
+            className="text-xs bg-red-900 text-red-300 px-2 py-1 rounded hover:bg-red-800"
+          >🚫 Cancel & Refund</button>
+          {msg && <p className="text-sm mt-2">{msg}</p>}
+        </div>
+      ))}
     </div>
   );
 }

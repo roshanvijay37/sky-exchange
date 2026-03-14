@@ -207,6 +207,76 @@ public class AdminController(AppDbContext db) : ControllerBase
         return Ok(new { Message = $"Score: {req.ScoreA}-{req.ScoreB} (digits: {lastDigitA},{lastDigitB}). {winners}/{bets.Count} won. Payout: ₹{totalPayout}" });
     }
 
+    [HttpPost("contest/create")]
+    public async Task<IActionResult> CreateContest([FromBody] CreateContestRequest req)
+    {
+        var match = await db.Matches.FindAsync(req.MatchId);
+        if (match is null) return NotFound("Match not found");
+
+        var contest = new ScoreContest
+        {
+            MatchId = req.MatchId,
+            EntryFee = 100m,
+            MaxPlayers = 10,
+            Status = "open",
+            CreatedAt = DateTime.UtcNow
+        };
+        db.ScoreContests.Add(contest);
+        await db.SaveChangesAsync();
+        return Ok(new { contest.Id, contest.MatchId, contest.Status });
+    }
+
+    [HttpPost("contest/{contestId}/settle")]
+    public async Task<IActionResult> SettleContest(int contestId, [FromBody] SettleContestRequest req)
+    {
+        var contest = await db.ScoreContests
+            .Include(c => c.Predictions).ThenInclude(p => p.User)
+            .FirstOrDefaultAsync(c => c.Id == contestId);
+        if (contest is null) return NotFound("Contest not found");
+        if (contest.Status == "settled") return BadRequest("Already settled");
+        if (contest.Status != "full") return BadRequest("Contest not full yet");
+
+        contest.ActualScoreA = req.ActualScoreA;
+        contest.ActualScoreB = req.ActualScoreB;
+
+        foreach (var p in contest.Predictions)
+            p.Difference = Math.Abs(p.PredictedScoreA - req.ActualScoreA) + Math.Abs(p.PredictedScoreB - req.ActualScoreB);
+
+        var ranked = contest.Predictions.OrderBy(p => p.Difference).ThenBy(p => p.CreatedAt).ToList();
+        for (int i = 0; i < ranked.Count; i++)
+            ranked[i].Rank = i + 1;
+
+        if (ranked.Count >= 1) { ranked[0].Payout = 500m; ranked[0].User.Balance += 500m; }
+        if (ranked.Count >= 2) { ranked[1].Payout = 300m; ranked[1].User.Balance += 300m; }
+
+        contest.Status = "settled";
+        await db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            Message = $"Contest settled! Score: {req.ActualScoreA}-{req.ActualScoreB}",
+            Winner = ranked.Count >= 1 ? ranked[0].User.Username : null,
+            RunnerUp = ranked.Count >= 2 ? ranked[1].User.Username : null
+        });
+    }
+
+    [HttpPost("contest/{contestId}/cancel")]
+    public async Task<IActionResult> CancelContest(int contestId)
+    {
+        var contest = await db.ScoreContests
+            .Include(c => c.Predictions).ThenInclude(p => p.User)
+            .FirstOrDefaultAsync(c => c.Id == contestId);
+        if (contest is null) return NotFound("Contest not found");
+        if (contest.Status == "settled") return BadRequest("Cannot cancel settled contest");
+
+        foreach (var p in contest.Predictions)
+            p.User.Balance += contest.EntryFee;
+
+        contest.Status = "cancelled";
+        await db.SaveChangesAsync();
+        return Ok(new { Message = $"Contest cancelled. {contest.Predictions.Count} user(s) refunded." });
+    }
+
     [HttpPost("matches/{matchId}/toggle-lock")]
     public async Task<IActionResult> ToggleLock(int matchId)
     {
