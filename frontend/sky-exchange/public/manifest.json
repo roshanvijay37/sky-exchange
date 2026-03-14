@@ -1,0 +1,13 @@
+{
+  "name": "Sky Exchange",
+  "short_name": "SkyExchange",
+  "description": "Sports Trading Exchange",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#eab308",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
