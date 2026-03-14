@@ -40,6 +40,15 @@ export default function MatchPage() {
       await conn.invoke("JoinMatch", Number(id));
     };
 
+    conn.on("OrderBookUpdated", (data: { oddsId: number; backs: OrderBookEntry[]; lays: OrderBookEntry[] }) => {
+      setSelectedOdd((current) => {
+        if (current && current.id === data.oddsId) {
+          setOrderBook({ backs: data.backs, lays: data.lays });
+        }
+        return current;
+      });
+    });
+
     conn.on("OddsUpdated", (data: { marketId: number; odds: Odd[] }) => {
       setMarkets((prev) =>
         prev.map((m) =>
@@ -64,6 +73,7 @@ export default function MatchPage() {
     return () => {
       conn.invoke("LeaveMatch", Number(id)).catch(() => {});
       conn.off("OddsUpdated");
+      conn.off("OrderBookUpdated");
     };
   }, [id, loadOrderBook]);
 

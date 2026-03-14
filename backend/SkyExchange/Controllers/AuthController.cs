@@ -8,6 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 using SkyExchange.Data;
 using SkyExchange.Models;
 
+using Microsoft.AspNetCore.RateLimiting;
+
 namespace SkyExchange.Controllers;
 
 public record RegisterRequest(string Username, string Password);
@@ -15,6 +17,7 @@ public record LoginRequest(string Username, string Password);
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("auth")]
 public class AuthController(AppDbContext db, IConfiguration config) : ControllerBase
 {
     [HttpPost("register")]

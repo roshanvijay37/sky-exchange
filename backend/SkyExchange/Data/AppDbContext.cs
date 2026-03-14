@@ -26,6 +26,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(o => o.Odd).WithMany().HasForeignKey(o => o.OddsId);
         });
 
+        modelBuilder.Entity<User>()
+            .Property(u => u.Version).IsConcurrencyToken();
+
         modelBuilder.Entity<Trade>(e =>
         {
             e.HasOne(t => t.BackOrder).WithMany().HasForeignKey(t => t.BackOrderId);
