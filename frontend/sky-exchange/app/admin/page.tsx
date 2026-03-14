@@ -45,6 +45,8 @@ interface Dashboard {
   todayVolume: number;
   totalBalances: number;
   platformPnl: number;
+  totalCommission: number;
+  commissionRate: number;
   matchStats: MatchStat[];
   topTraders: TopTrader[];
 }
@@ -184,6 +186,10 @@ export default function AdminPage() {
                 <p className={`text-lg font-bold ${dashboard.platformPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
                   {dashboard.platformPnl >= 0 ? "+" : ""}${dashboard.platformPnl.toFixed(2)}
                 </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Commission Earned ({dashboard.commissionRate}%)</p>
+                <p className="text-lg font-bold text-green-400">${dashboard.totalCommission.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Total Orders</p>

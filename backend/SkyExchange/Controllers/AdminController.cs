@@ -13,6 +13,8 @@ public record AdjustBalanceRequest(decimal Amount, string Reason);
 [Authorize(Roles = "admin")]
 public class AdminController(AppDbContext db) : ControllerBase
 {
+    private const decimal CommissionRate = 0.05m; // 5% on winner's profit
+
     // POST /api/admin/settle/3 — settle a match with the winning outcome
     [HttpPost("settle/{matchId}")]
     public async Task<IActionResult> SettleMatch(int matchId, [FromBody] SettleRequest req)
@@ -28,6 +30,7 @@ public class AdminController(AppDbContext db) : ControllerBase
             .ToListAsync();
 
         var payouts = new List<object>();
+        var totalCommission = 0m;
 
         foreach (var market in markets)
         {
@@ -43,18 +46,19 @@ public class AdminController(AppDbContext db) : ControllerBase
             {
                 var isWinningOutcome = trade.Odd.Outcome == req.WinningOutcome;
                 var profit = trade.Stake * (trade.Price - 1);
+                var commission = Math.Round(profit * CommissionRate, 2);
+                var netProfit = profit - commission;
+                totalCommission += commission;
 
                 if (isWinningOutcome)
                 {
-                    // Back wins: gets stake + profit
-                    trade.BackOrder.User.Balance += trade.Stake + profit;
-                    payouts.Add(new { User = trade.BackOrder.User.Username, Amount = trade.Stake + profit, Result = "won (back)" });
+                    trade.BackOrder.User.Balance += trade.Stake + netProfit;
+                    payouts.Add(new { User = trade.BackOrder.User.Username, Amount = trade.Stake + netProfit, Commission = commission, Result = "won (back)" });
                 }
                 else
                 {
-                    // Lay wins: gets the stake (their liability is already deducted)
-                    trade.LayOrder.User.Balance += trade.Stake + profit;
-                    payouts.Add(new { User = trade.LayOrder.User.Username, Amount = trade.Stake + profit, Result = "won (lay)" });
+                    trade.LayOrder.User.Balance += trade.Stake + netProfit;
+                    payouts.Add(new { User = trade.LayOrder.User.Username, Amount = trade.Stake + netProfit, Commission = commission, Result = "won (lay)" });
                 }
             }
 
@@ -78,7 +82,7 @@ public class AdminController(AppDbContext db) : ControllerBase
         match.WinningOutcome = req.WinningOutcome;
         await db.SaveChangesAsync();
 
-        return Ok(new { Message = $"Match settled. Winner: {req.WinningOutcome}", Payouts = payouts });
+        return Ok(new { Message = $"Match settled. Winner: {req.WinningOutcome}. Commission earned: ${totalCommission:F2} ({CommissionRate * 100}%)", Payouts = payouts, TotalCommission = totalCommission });
     }
 
     [HttpGet("users")]
@@ -179,6 +183,13 @@ public class AdminController(AppDbContext db) : ControllerBase
         var initialBalance = await db.Users.CountAsync() * 10000m;
         var platformPnl = initialBalance - totalBalances;
 
+        // Commission earned from settled trades
+        var settledMatchIds = await db.Matches.Where(m => m.Status == "completed").Select(m => m.Id).ToListAsync();
+        var settledTrades = await db.Trades
+            .Where(t => settledMatchIds.Contains(t.Odd.Market.MatchId))
+            .SumAsync(t => t.Stake * (t.Price - 1));
+        var totalCommission = Math.Round(settledTrades * CommissionRate, 2);
+
         var matchStats = await db.Matches
             .Where(m => m.Status != "completed")
             .Select(m => new
@@ -222,6 +233,8 @@ public class AdminController(AppDbContext db) : ControllerBase
             TodayVolume = todayVolume,
             TotalBalances = totalBalances,
             PlatformPnl = platformPnl,
+            TotalCommission = totalCommission,
+            CommissionRate = CommissionRate * 100,
             MatchStats = matchStats,
             TopTraders = topTraders
         });
