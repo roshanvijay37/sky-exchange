@@ -98,7 +98,11 @@ export default function MatchPage() {
         method: "POST",
         body: JSON.stringify({ oddsId: selectedOdd.id, side, price, stake: Number(stake) }),
       });
-      setMessage(`✅ Order #${result.id} placed (${result.status}). Balance: $${result.balance.toFixed(2)}`);
+      setMessage(
+        result.status === "matched"
+          ? `🟢 Bet matched! ${side.toUpperCase()} ${selectedOdd.outcome} at ${price.toFixed(2)} for $${Number(stake).toFixed(2)}`
+          : `🟡 Bet placed — waiting for a counterparty. ${side.toUpperCase()} ${selectedOdd.outcome} at ${price.toFixed(2)} for $${Number(stake).toFixed(2)}`
+      );
       setStake("");
       loadOrderBook(selectedOdd.id);
       refreshBalance();
@@ -207,7 +211,13 @@ export default function MatchPage() {
             >
               Place {side.toUpperCase()} Order
             </button>
-            {message && <p className="mt-2 text-xs">{message}</p>}
+            {message && (
+              <p className={`mt-3 text-sm font-semibold rounded-lg px-3 py-2 ${
+                message.startsWith("🟢") ? "bg-green-900/50 border border-green-700 text-green-300" :
+                message.startsWith("🟡") ? "bg-yellow-900/50 border border-yellow-700 text-yellow-300" :
+                "bg-red-900/50 border border-red-700 text-red-300"
+              }`}>{message}</p>
+            )}
 
             {/* Confirmation Modal */}
             {showConfirm && selectedOdd && (
