@@ -82,6 +82,16 @@ export default function AdminPage() {
     setMarkets(data);
   };
 
+  const toggleMarketSuspension = async (matchId: number) => {
+    const isSuspended = markets.length > 0 && markets[0].status === "suspended";
+    if (!confirm(`${isSuspended ? "Resume" : "Suspend"} trading for this match?`)) return;
+    await fetchApi(`/admin/matches/${matchId}/suspend`, { method: "POST" });
+    if (selectedMatch) {
+      const data = await fetchApi<Market[]>(`/markets/match/${matchId}`);
+      setMarkets(data);
+    }
+  };
+
   const settle = async (outcome: string) => {
     if (!selectedMatch) return;
     if (!confirm(`Settle "${selectedMatch.teamA} vs ${selectedMatch.teamB}" with winner: ${outcome}?`)) return;
@@ -267,10 +277,25 @@ export default function AdminPage() {
 
           {selectedMatch && markets.length > 0 && (
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
-              <h3 className="font-bold mb-3">
-                Settle: {selectedMatch.teamA} vs {selectedMatch.teamB}
-              </h3>
-              <p className="text-sm text-gray-400 mb-3">Select the winning outcome:</p>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold">
+                  {selectedMatch.teamA} vs {selectedMatch.teamB}
+                </h3>
+                <button
+                  onClick={() => toggleMarketSuspension(selectedMatch.id)}
+                  className={`text-xs px-3 py-1.5 rounded font-bold ${
+                    markets[0].status === "suspended"
+                      ? "bg-green-900 text-green-300 hover:bg-green-800"
+                      : "bg-red-900 text-red-300 hover:bg-red-800"
+                  }`}
+                >
+                  {markets[0].status === "suspended" ? "▶ Resume Trading" : "⏸ Suspend Trading"}
+                </button>
+              </div>
+              {markets[0].status === "suspended" && (
+                <p className="text-red-400 text-xs mb-3">⚠️ Market is currently SUSPENDED — users cannot trade</p>
+              )}
+              <p className="text-sm text-gray-400 mb-3">Select the winning outcome to settle:</p>
               <div className="flex flex-wrap gap-2">
                 {markets[0].odds.map((odd) => (
                   <button

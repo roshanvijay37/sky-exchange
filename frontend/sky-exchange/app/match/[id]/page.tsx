@@ -122,6 +122,13 @@ export default function MatchPage() {
         </span>
       </div>
 
+      {/* Suspended Banner */}
+      {markets.some(m => m.status === "suspended") && (
+        <div className="bg-red-900/50 border border-red-700 rounded-lg p-3 mb-4 text-center">
+          <p className="text-red-300 font-bold text-sm">⚠️ MARKET SUSPENDED — Trading is temporarily paused</p>
+        </div>
+      )}
+
       {/* Odds Table */}
       {markets.map((market) => (
         <div key={market.id} className="mb-6">
@@ -130,8 +137,9 @@ export default function MatchPage() {
             {market.odds.map((odd) => (
               <button
                 key={odd.id}
-                onClick={() => selectOdd(odd)}
+                onClick={() => !markets.some(m => m.status === "suspended") && selectOdd(odd)}
                 className={`rounded-lg p-3 text-center border transition ${
+                  markets.some(m => m.status === "suspended") ? "border-gray-800 bg-gray-900 opacity-50 cursor-not-allowed" :
                   selectedOdd?.id === odd.id ? "border-yellow-400 bg-gray-800" : "border-gray-700 bg-gray-900 hover:border-gray-500"
                 }`}
               >
@@ -151,7 +159,7 @@ export default function MatchPage() {
       ))}
 
       {/* Trade Panel + Order Book (side by side) */}
-      {selectedOdd && (
+      {selectedOdd && !markets.some(m => m.status === "suspended") && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {/* Trade Panel */}
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">

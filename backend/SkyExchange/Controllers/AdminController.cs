@@ -118,6 +118,19 @@ public class AdminController(AppDbContext db) : ControllerBase
         return Ok(new { user.Id, user.IsSuspended });
     }
 
+    [HttpPost("matches/{matchId}/suspend")]
+    public async Task<IActionResult> ToggleMarketSuspension(int matchId)
+    {
+        var markets = await db.Markets.Where(m => m.MatchId == matchId && m.Status != "closed").ToListAsync();
+        if (markets.Count == 0) return NotFound("No open markets for this match");
+
+        var newStatus = markets[0].Status == "open" ? "suspended" : "open";
+        foreach (var m in markets) m.Status = newStatus;
+        await db.SaveChangesAsync();
+
+        return Ok(new { matchId, MarketStatus = newStatus });
+    }
+
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboard()
     {
