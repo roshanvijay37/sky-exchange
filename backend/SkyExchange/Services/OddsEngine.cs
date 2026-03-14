@@ -11,7 +11,6 @@ public class OddsEngine(IServiceProvider services, IHubContext<OddsHub> hub, ILo
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Wait a bit for the app to fully start
         await Task.Delay(5000, stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -33,10 +32,14 @@ public class OddsEngine(IServiceProvider services, IHubContext<OddsHub> hub, ILo
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // Only drift odds for matches that are LIVE and have actually started
+        var now = DateTime.UtcNow;
         var liveOdds = await db.Odds
             .Include(o => o.Market)
             .Where(o => o.Market.Status == "open"
-                     && db.Matches.Any(m => m.Id == o.Market.MatchId && m.Status == "live"))
+                     && db.Matches.Any(m => m.Id == o.Market.MatchId
+                                         && m.Status == "live"
+                                         && m.StartTime <= now))
             .ToListAsync(ct);
 
         if (liveOdds.Count == 0) return;

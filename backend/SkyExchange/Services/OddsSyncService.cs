@@ -145,10 +145,15 @@ public class OddsSyncService(IServiceProvider services, IConfiguration config, I
 public class ApiEvent
 {
     public string Id { get; set; } = "";
+    [System.Text.Json.Serialization.JsonPropertyName("sport_key")]
     public string SportKey { get; set; } = "";
+    [System.Text.Json.Serialization.JsonPropertyName("sport_title")]
     public string SportTitle { get; set; } = "";
+    [System.Text.Json.Serialization.JsonPropertyName("commence_time")]
     public DateTime CommenceTime { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("home_team")]
     public string HomeTeam { get; set; } = "";
+    [System.Text.Json.Serialization.JsonPropertyName("away_team")]
     public string AwayTeam { get; set; } = "";
     public List<ApiBookmaker>? Bookmakers { get; set; }
 }
@@ -170,3 +175,4 @@ public class ApiOutcome
     public string Name { get; set; } = "";
     public decimal Price { get; set; }
 }
+
