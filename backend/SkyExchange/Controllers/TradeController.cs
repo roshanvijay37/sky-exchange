@@ -21,7 +21,7 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
 {
     private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private const decimal MinStake = 1m;
+    private const decimal MinStake = 100m;
     private const decimal MaxStake = 5000m;
     private const decimal MinPrice = 1.01m;
     private const decimal MaxPrice = 1000m;
@@ -34,6 +34,8 @@ public class TradeController(AppDbContext db, IHubContext<OddsHub> hub) : Contro
             return BadRequest("Side must be 'back' or 'lay'");
         if (req.Stake < MinStake || req.Stake > MaxStake)
             return BadRequest($"Stake must be between {MinStake} and {MaxStake}");
+        if (req.Stake % 100 != 0)
+            return BadRequest("Stake must be in multiples of 100");
         if (req.Price < MinPrice || req.Price > MaxPrice)
             return BadRequest($"Price must be between {MinPrice} and {MaxPrice}");
         if (Math.Round(req.Price, 2) != req.Price)

@@ -91,8 +91,21 @@ export default function MatchPage() {
     loadOrderBook(odd.id);
   };
 
+  const QUICK_BETS = [100, 200, 500, 1000, 2000, 5000];
+
+  const setValidStake = (val: string) => {
+    setStake(val);
+    setShowConfirm(false);
+    setMessage("");
+  };
+
   const confirmTrade = () => {
-    if (!selectedOdd || !stake || Number(stake) < 1) return;
+    if (!selectedOdd || !stake) return;
+    const s = Number(stake);
+    if (s < 100 || s > 5000 || s % 100 !== 0) {
+      setMessage("❌ Bet must be ₹100 to ₹5000 in multiples of ₹100");
+      return;
+    }
     if (!user) { router.push("/login"); return; }
     setShowConfirm(true);
   };
@@ -179,15 +192,28 @@ export default function MatchPage() {
             <h3 className="font-bold text-lg mb-1">{selectedOdd.outcome}</h3>
             <p className="text-xs text-gray-400 mb-4">{t("bet")} ₹100 → {t("win")} ₹{winAmount(effectivePrice, 100).toFixed(0)} {t("profit")}</p>
 
-            <label className="text-sm text-gray-400 mb-1 block">{t("enterAmount")}</label>
+            <label className="text-sm text-gray-400 mb-2 block">{t("enterAmount")}</label>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {QUICK_BETS.map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => setValidStake(String(amt))}
+                  className={`py-2.5 rounded-lg text-sm font-bold transition ${
+                    Number(stake) === amt ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                >
+                  ₹{amt}
+                </button>
+              ))}
+            </div>
             <input
               type="number"
               placeholder="₹100"
-              min={1}
+              min={100}
               max={5000}
-              step={1}
+              step={100}
               value={stake}
-              onChange={(e) => { setStake(e.target.value); setShowConfirm(false); setMessage(""); }}
+              onChange={(e) => setValidStake(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 mb-4 text-lg font-bold"
             />
 
@@ -211,7 +237,7 @@ export default function MatchPage() {
             {!showConfirm ? (
               <button
                 onClick={confirmTrade}
-                disabled={stakeNum < 1}
+                disabled={stakeNum < 100 || stakeNum > 5000 || stakeNum % 100 !== 0}
                 className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {t("placeBet")}
